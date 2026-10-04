@@ -1,0 +1,15 @@
+import { test, expect } from '@playwright/test'
+test('table controls edit rows, columns and GFM alignment', async ({ page }) => {
+  await page.goto('/')
+  await page.getByRole('button', { name: 'Insert table', exact: true }).click()
+  await expect(page.locator('.tiptap tr')).toHaveCount(3)
+  await expect(page.getByRole('combobox', { name: 'Table actions' })).toBeVisible()
+  await page.getByRole('combobox', { name: 'Table actions' }).selectOption('addRowAfter')
+  await expect(page.locator('.tiptap tr')).toHaveCount(4)
+  await page.getByRole('combobox', { name: 'Table actions' }).selectOption('addColumnAfter')
+  await expect(page.locator('.tiptap tr').first().locator('th')).toHaveCount(4)
+  await page.getByRole('combobox', { name: 'Table actions' }).selectOption('align-center')
+  await expect(page.locator('.tiptap th').first()).toHaveCSS('text-align', 'center')
+  await page.getByRole('combobox', { name: 'Table actions' }).selectOption('deleteTable')
+  await expect(page.locator('.tiptap table')).toHaveCount(0)
+})

@@ -1,0 +1,50 @@
+{
+  "name": "eleven-md",
+  "version": "0.3.0",
+  "private": true,
+  "license": "MIT",
+  "repository": { "type": "git", "url": "https://github.com/FullPotionStack/ElevenMD.git" },
+  "description": "A local-first Markdown and plain-text editor for Windows",
+  "type": "module",
+  "main": "electron/main.cjs",
+  "scripts": {
+    "dev": "vite --host 127.0.0.1",
+    "build": "vite build",
+    "start": "electron .",
+    "test": "node --test tests/*.test.mjs",
+    "test:ui": "playwright test",
+    "test:desktop": "node tests/desktop-smoke.mjs",
+    "test:packaged": "node tests/desktop-smoke.mjs --packaged",
+    "test:restart": "node tests/desktop-restart.mjs",
+    "test:session": "node tests/desktop-session.mjs --packaged",
+    "test:preferences": "node tests/desktop-preferences.mjs",
+    "test:images": "node tests/desktop-images.mjs",
+    "test:regressions": "node tests/desktop-regressions.mjs",
+    "test:support": "node tests/desktop-support.mjs",
+    "test:installer": "node tests/installer-lifecycle.mjs",
+    "test:native": "node tests/desktop-native.mjs --packaged",
+    "package:win": "npm run build && node scripts/package-windows.mjs",
+    "installer:win": "npm run package:win && node scripts/build-installer.mjs"
+  },
+  "dependencies": {
+    "@tiptap/core": "3.31.4",
+    "@tiptap/extension-image": "3.31.4",
+    "@tiptap/extension-list": "3.31.4",
+    "@tiptap/extension-table": "3.31.4",
+    "@tiptap/markdown": "3.31.4",
+    "@tiptap/starter-kit": "3.31.4",
+    "dompurify": "3.4.16",
+    "highlight.js": "11.12.0",
+    "katex": "0.19.0",
+    "markdown-it": "15.0.2",
+    "markdown-it-deflist": "4.0.0",
+    "markdown-it-footnote": "4.0.0",
+    "markdown-it-task-lists": "2.1.1",
+    "markdown-it-texmath": "1.0.0"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.63.0",
+    "electron": "44.5.1",
+    "vite": "8.3.2"
+  }
+}

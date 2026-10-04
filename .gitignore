@@ -1,0 +1,13 @@
+node_modules/
+dist/
+release/
+test-results/
+playwright-report/
+*.log
+recovery/
+.env
+.env.*
+*.pem
+*.key
+docs/decisions.md
+docs/LOOKUP-SUITE-REVIEW.md
