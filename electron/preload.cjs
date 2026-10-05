@@ -26,8 +26,6 @@ contextBridge.exposeInMainWorld('notepad', Object.freeze({
   diagnosticsClear: () => ipcRenderer.invoke('notepad:diagnostics-clear'),
   diagnosticsExport: () => ipcRenderer.invoke('notepad:diagnostics-export'),
   recordDiagnostic: value => ipcRenderer.invoke('notepad:record-diagnostic', value),
-  prepareBugReport: value => ipcRenderer.invoke('notepad:prepare-bug-report', value),
-  reportBug: value => ipcRenderer.invoke('notepad:report-bug', value),
   onAction: callback => {
     if (typeof callback !== 'function') throw new TypeError('Action callback must be a function.');
     const listener = (_event, action) => callback(action);

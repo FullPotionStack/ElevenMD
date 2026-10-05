@@ -19,7 +19,7 @@ root.innerHTML = `<header class="tabs" aria-label="Document tabs"><div id="tabli
 <nav class="menubar"><div class="menus"><button id="file-menu">File</button><button id="edit-menu">Edit</button><button id="view-menu">View</button><button id="help-menu">Help</button></div><label class="quick-theme">Theme<select id="quick-theme" aria-label="Quick theme"><option value="system">Auto (system)</option><option value="light">Light</option><option value="dark">Dark</option></select></label><button id="settings" aria-label="Settings" title="Settings">⚙ Settings</button><div class="modes" aria-label="Editing mode"><button id="formatted" class="selected">Formatted</button><button id="source-mode">Source</button><button id="preview-mode">Preview</button></div></nav>
 <div class="toolbar" aria-label="Formatting"><select id="block-style" aria-label="Block style"><option value="p">Paragraph</option><option value="h1">Heading 1</option><option value="h2">Heading 2</option><option value="h3">Heading 3</option><option value="h4">Heading 4</option><option value="h5">Heading 5</option><option value="h6">Heading 6</option></select><span class="separator"></span></div>
 <div id="find-bar" hidden><input id="find-text" aria-label="Find text" placeholder="Find in Markdown source"><input id="replace-text" aria-label="Replace with" placeholder="Replace with"><button id="find-next">Next</button><button id="replace-one">Replace</button><button id="replace-all">Replace all</button><span id="find-result" role="status"></span><button id="close-find" aria-label="Close find">×</button></div><main><div id="rich"></div><article id="preview" aria-label="Markdown preview" hidden></article><textarea id="source" aria-label="Markdown source" spellcheck="false" hidden></textarea></main>
-<footer><span id="file-status"></span><span id="statistics"></span><span class="spacer"></span><button id="privacy-choice" hidden>Choose diagnostics privacy</button><button id="update-status" hidden aria-live="polite"></button><span id="encoding">UTF-8</span><button id="zoom" title="Reset zoom">100%</button><span>Markdown</span></footer>
+<footer><span id="file-status"></span><span id="statistics"></span><span class="spacer"></span><button id="update-status" hidden aria-live="polite"></button><span id="encoding">UTF-8</span><button id="zoom" title="Reset zoom">100%</button><span>Markdown</span></footer>
 <div id="toast" role="status" hidden></div><dialog id="modal"></dialog>`
 let docs = [], activeId, untitledCount = 0, mode = 'formatted', saving = false
 let sessionReady = false, autosaveTimer, booting, closingWindow = false, sessionStoragePath = ''
@@ -32,6 +32,7 @@ const source = document.querySelector('#source')
 const modal = $('#modal'), showModal = modal.showModal.bind(modal)
 modal.showModal = () => {
   const heading = modal.querySelector('h2'); if (heading) { heading.id = 'dialog-heading'; modal.setAttribute('aria-labelledby', heading.id) }
+  modal.classList.toggle('settings-dialog', heading?.textContent === 'Settings')
   showModal()
 }
 const editor = new Editor({
@@ -235,15 +236,42 @@ function applyPrefs() {
 }
 function changeZoom(amount) { zoom = Math.max(50, Math.min(200, zoom + amount)); applyPrefs() }
 $('#zoom').onclick = () => { zoom = 100; applyPrefs() }
-function settings() {
+function settings(section = 'appearance') {
   const modal = $('#modal')
-  modal.innerHTML = `<h2>Settings</h2><p class="muted">A clear space for Markdown and plain text.</p><label>App theme<select id="theme" aria-label="App theme"><option value="system">Use system setting</option><option value="light">Light</option><option value="dark">Dark</option></select></label><label>Editor font<select id="font" aria-label="Editor font"><option value="Georgia">Georgia</option><option value="Consolas">Consolas</option></select></label><label>Text size<select id="text-size" aria-label="Text size"><option>14</option><option>16</option><option>18</option><option>20</option><option>24</option></select></label><label class="check-label"><input type="checkbox" id="wrap">Wrap Markdown source lines</label><label class="check-label"><input type="checkbox" id="spellcheck">Spell check</label><label class="check-label"><input type="checkbox" id="remote-images">Load remote images</label><p class="muted small">Closing the app keeps every tab automatically. Only Save writes to your document file.</p><label>Session storage<input id="session-location" aria-label="Session storage" readonly></label><p class="muted small">ElevenMD · 0.3.3 alpha<br>Local files. No AI. No cloud.</p><div class="dialog-actions"><button id="done" class="primary">Done</button></div>`
+  if (modal.open) modal.close()
+  modal.dataset.support = 'settings'
+  const sections = [['appearance', 'Appearance'], ['editor', 'Editor'], ['privacy', 'Privacy & diagnostics'], ['updates', 'Updates']]
+  modal.innerHTML = `<h2>Settings</h2><div class="settings-tabs" role="tablist" aria-label="Settings sections">${sections.map(([id, name]) => `<button id="settings-tab-${id}" role="tab" aria-controls="settings-${id}" aria-selected="false" tabindex="-1">${name}</button>`).join('')}</div>
+    <section id="settings-appearance" role="tabpanel" aria-labelledby="settings-tab-appearance" tabindex="0" hidden><h3>Appearance</h3><label>App theme<select id="theme" aria-label="App theme"><option value="system">Use system setting</option><option value="light">Light</option><option value="dark">Dark</option></select></label><p class="muted small">ElevenMD · 0.3.4 alpha<br>Local documents. No AI. No cloud document storage.</p></section>
+    <section id="settings-editor" role="tabpanel" aria-labelledby="settings-tab-editor" tabindex="0" hidden><h3>Editor</h3><label>Editor font<select id="font" aria-label="Editor font"><option value="Georgia">Georgia</option><option value="Consolas">Consolas</option></select></label><label>Text size<select id="text-size" aria-label="Text size"><option>14</option><option>16</option><option>18</option><option>20</option><option>24</option></select></label><label class="check-label"><input type="checkbox" id="wrap">Wrap Markdown source lines</label><label class="check-label"><input type="checkbox" id="spellcheck">Spell check</label><p class="muted small">Closing the app keeps every tab automatically. Only Save writes to your document file.</p><label class="stacked">Session storage<input id="session-location" aria-label="Session storage" readonly></label></section>
+    <section id="settings-privacy" role="tabpanel" aria-labelledby="settings-tab-privacy" tabindex="0" hidden><h3>Privacy & diagnostics</h3><label class="check-label"><input type="checkbox" id="remote-images">Load remote images</label><p class="muted small">Remote images contact their hosting websites only when enabled.</p><div id="settings-diagnostics"></div></section>
+    <section id="settings-updates" role="tabpanel" aria-labelledby="settings-tab-updates" tabindex="0" hidden><div id="settings-update-tools"></div></section>
+    <div class="dialog-actions"><button id="done" class="primary">Done</button></div>`
   $('#session-location').value = sessionStoragePath || 'Browser storage (development preview)'
   $('#theme').value = prefs.theme; $('#font').value = prefs.font; $('#text-size').value = prefs.size; $('#wrap').checked = prefs.wrap; $('#spellcheck').checked = prefs.spellcheck; $('#remote-images').checked = prefs.remoteImages
   const changed = () => { prefs = { ...prefs, theme: $('#theme').value, font: $('#font').value, size: Number($('#text-size').value), wrap: $('#wrap').checked, spellcheck: $('#spellcheck').checked, remoteImages: $('#remote-images').checked }; applyPrefs() }
-  for (const input of modal.querySelectorAll('input, select')) input.onchange = changed
+  for (const id of ['theme', 'font', 'text-size', 'wrap', 'spellcheck', 'remote-images']) $(`#${id}`).onchange = changed
+  const activate = (id, focus = false) => {
+    for (const [name] of sections) {
+      const tab = $(`#settings-tab-${name}`), selected = id === name
+      tab.setAttribute('aria-selected', String(selected)); tab.tabIndex = selected ? 0 : -1
+      $(`#settings-${name}`).hidden = !selected
+    }
+    if (id === 'privacy') support.privacy($('#settings-diagnostics'))
+    if (id === 'updates') support.updates($('#settings-update-tools'))
+    if (focus) $(`#settings-tab-${id}`).focus()
+  }
+  for (const [id] of sections) $(`#settings-tab-${id}`).onclick = () => activate(id)
+  $('.settings-tabs').onkeydown = event => {
+    if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return
+    event.preventDefault()
+    const index = sections.findIndex(([id]) => `settings-tab-${id}` === event.target.id)
+    const next = event.key === 'Home' ? 0 : event.key === 'End' ? sections.length - 1 : (index + (event.key === 'ArrowRight' ? 1 : sections.length - 1)) % sections.length
+    activate(sections[next][0], true)
+  }
   $('#done').onclick = () => { changed(); modal.close() }
-  modal.showModal()
+  modal.showModal(); activate(typeof section === 'string' && sections.some(([id]) => id === section) ? section : 'appearance')
+  $('.settings-tabs [aria-selected="true"]').focus()
 }
 matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => { if (prefs.theme === 'system') applyPrefs() })
 $('#settings').onclick = settings
@@ -462,10 +490,10 @@ async function bootstrap() {
 }
 if (api) api.onAction(action => {
   if (action === 'close-window') closeWindow()
-  if (action?.type === 'diagnostics-error') toast('Diagnostics storage failed; collection is disabled. Old disk logs may remain. Review Help → Diagnostics & privacy before restarting.')
+  if (action?.type === 'diagnostics-error') toast('Diagnostics storage failed; collection is disabled. Old disk logs may remain. Review Settings → Privacy & diagnostics before restarting.')
   if (action?.type === 'opened') booting.then(() => addFiles(action.files))
   if (action?.type === 'checkpoint-update') booting.then(() => api.checkpointUpdate({ token: action.token, snapshot: sessionSnapshot() })).catch(() => toast('Update stopped: could not checkpoint your tabs.'))
 })
 booting = bootstrap().catch(error => toast(`Could not restore session: ${error.message}`))
-const support = setupSupport({ api, checkpoint: checkpointSession, showMenu, toast })
+const support = setupSupport({ api, checkpoint: checkpointSession, showMenu, toast, openSettings: settings })
 booting.then(() => support.initialize()).catch(() => {})

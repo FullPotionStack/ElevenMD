@@ -1,6 +1,6 @@
 # Distributing a fork
 
-Forks **MUST change their update and bug-report repository before distributing modified builds**. A modified app must not download official ElevenMD installers that replace the fork, and fork-specific reports must not arrive in the official issue tracker.
+Forks **MUST change their update repository before distributing modified builds**. A modified app must not download official ElevenMD installers that replace the fork.
 
 ## Set the distribution destination
 
@@ -9,7 +9,7 @@ Edit `electron/distribution.cjs`:
 - `repository`: your literal GitHub `owner/repository`, without a URL, query string or trailing slash.
 - `installerPrefix`: your installer asset prefix. A version `1.2.3` with prefix `MyFork-Setup` expects `MyFork-Setup-1.2.3.exe`.
 
-The updater and issue-draft builder both read this configuration in the main process. Renderer input cannot change it. Release API requests, release links, installer URLs, and issue drafts use that configured repository; installer URLs are still validated against it. GitHub release-delivery redirects, bounded responses, checksums and native installation approval remain enforced.
+The updater reads this configuration in the main process. Renderer input cannot change it. Release API requests, release links, and installer URLs use that configured repository; installer URLs are still validated against it. GitHub release-delivery redirects, bounded responses, checksums and native installation approval remain enforced.
 
 Set Git `origin` to your fork's GitHub URL and update `package.json` repository metadata. Both Windows packaging entry points reject a configured repository that differs from `origin`. Use a GitHub checkout rather than a source archive when packaging.
 

@@ -1,5 +1,11 @@
 # Writing-workflow QA
 
+## Local 0.3.4 build
+
+89 unit tests and 89 Chromium UI tests passed. Reporting-removal regressions first failed against the previous UI/IPC implementation, then passed after both the menu and main/preload report entry points were removed. Tabbed Settings, formatted release notes and local opt-in diagnostics remain available. Packaged file IPC, local support/privacy controls and full-session recovery passed.
+
+The normal-user installation was replaced with 0.3.4 without deleting session storage. Its real installed executable passed the support/privacy test, including absence of reporting APIs and the Report a bug menu. No report receiver, email client setup, email delivery or GitHub issue creation is part of this build. Unfinished reporting work is preserved on the local-only `wip/bug-reporting` branch, not included in the active app. This build has not been published to GitHub.
+
 ## Release 0.3.3
 
 93 unit tests and 88 Chromium UI tests passed. The release-note regression failed on the old plain-text display and passed with semantic headings, lists, emphasis, code and tables. Tests also verify no active HTML, hyperlinks or image requests, formatting after download, keyboard scrolling and narrow light/dark layouts. Packaged file and support/privacy checks passed.

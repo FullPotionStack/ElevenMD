@@ -4,7 +4,7 @@ const path = require('node:path');
 const { spawn } = require('node:child_process');
 const { createUpdateService } = require('./updates.cjs');
 const { createDiagnosticsService } = require('./diagnostics.cjs');
-const { REPOSITORY, prepareReport, issueURL } = require('./bug-report.cjs');
+const { repository: REPOSITORY } = require('./distribution.cjs');
 
 async function setupSupport({ electron, window, handle, userData, version, checkpoint }) {
   const { app, dialog, shell } = electron;
@@ -64,26 +64,6 @@ async function setupSupport({ electron, window, handle, userData, version, check
     const result = await dialog.showSaveDialog(window, { title: 'Export sanitized diagnostics', defaultPath: 'ElevenMD-diagnostics.json', filters: [{ name: 'JSON diagnostics', extensions: ['json'] }], properties: ['showOverwriteConfirmation', 'createDirectory'] });
     if (result.canceled || !result.filePath) return false;
     await fs.writeFile(result.filePath, report, { encoding: 'utf8', mode: 0o600 });
-    return true;
-  });
-  let reviewed = null;
-  handle('prepare-bug-report', async payload => {
-    const prepared = prepareReport(payload);
-    const report = await diagnostics.inspect();
-    // Bounded summary. The user can attach a full reviewed export manually.
-    const summary = { environment: report.environment, events: prepared.includeDiagnostics ? report.events.slice(-12) : [] };
-    const appendix = prepared.includeDiagnostics ? `\n\n## Sanitized diagnostics\n\`\`\`json\n${JSON.stringify(summary, null, 2)}\n\`\`\`` : `\n\nElevenMD ${version}`;
-    if (prepared.body.length + appendix.length > 6000) throw new Error('Report too long. Shorten your steps or export diagnostics separately.');
-    reviewed = prepareReport({ ...prepared, body: prepared.body + appendix });
-    issueURL(reviewed); // Verify it fits before displaying a draft we cannot open.
-    return { ...reviewed };
-  });
-  handle('report-bug', async payload => {
-    const report = prepareReport(payload);
-    if (!reviewed || JSON.stringify(report) !== JSON.stringify(reviewed)) return false;
-    const result = await dialog.showMessageBox(window, { type: 'question', title: 'Public bug report', message: 'Open this reviewed report on GitHub?', detail: 'GitHub issues are public. You will still choose whether to submit the issue in your browser. No files or screenshots are uploaded.', buttons: ['Open GitHub', 'Cancel'], defaultId: 1, cancelId: 1, noLink: true });
-    if (result.response !== 0) return false;
-    await shell.openExternal(issueURL(report)); reviewed = null;
     return true;
   });
   return { diagnostics, updates, record };

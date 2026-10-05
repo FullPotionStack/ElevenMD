@@ -139,6 +139,22 @@ button.primary:hover { background: var(--active-tab); }
 dialog { background: var(--paper); border-color: var(--border); }
 #toast { background: var(--chrome); border-color: var(--border); }
 @media(max-width: 700px) { :is(.tiptap, #preview), #source { padding: 24px 20px 80px; } }
+/* Settings keeps navigation and dismissal outside the scrolling section. */
+#modal.settings-dialog { width: 600px; height: min(560px, calc(100dvh - 32px)); max-height: calc(100dvh - 32px); padding: 18px; overflow: hidden; }
+#modal.settings-dialog[open] { display: flex; flex-direction: column; }
+.settings-tabs { display: flex; flex-shrink: 0; gap: 4px; border-bottom: 1px solid var(--border); margin: 4px 0 12px; padding-bottom: 6px; }
+.settings-tabs button { padding: 8px 10px; }
+.settings-tabs [aria-selected="true"] { color: var(--accent); background: var(--selected); box-shadow: inset 0 -2px 0 var(--accent); font-weight: 600; }
+.settings-dialog [role="tabpanel"] { flex: 1; min-height: 0; overflow: auto; overflow-wrap: anywhere; padding: 0 6px 6px 0; }
+.settings-dialog [role="tabpanel"]:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.settings-dialog h3 { margin: 4px 0 12px; font-size: 16px; }
+.settings-dialog h4 { margin: 14px 0 10px; font-size: 14px; }
+.settings-dialog label { margin: 12px 0; }
+.settings-dialog p { margin-bottom: 12px; }
+.settings-dialog .dialog-actions { flex-shrink: 0; margin-top: 12px; padding-top: 8px; border-top: 1px solid var(--border); }
+.settings-dialog .release-notes { max-height: min(240px, 35dvh); margin: 12px 0; }
+.settings-dialog .support-actions { margin-bottom: 12px; }
+@media(max-width: 700px) { .settings-tabs button { padding: 8px; font-size: 12px; } }
 /* Support tools remain separate from the document workspace. */
 #modal[data-support] { width: 620px; }
 .support-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 18px; }

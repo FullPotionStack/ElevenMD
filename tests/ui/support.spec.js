@@ -18,13 +18,73 @@ async function desktop(page, update = { status: 'available', version: '0.4.0', n
       diagnosticsInspect: async () => ({ schema: 1, consent, events: [], environment: { version: '0.3.0', platform: 'win32' } }),
       diagnosticsClear: async () => ({ consent, count: 0 }),
       diagnosticsExport: async () => { window.supportCalls.push('export'); return true },
-      reportBug: async value => { window.supportCalls.push({ report: value }); return true },
       recordDiagnostic: async event => { window.supportCalls.push({ event }) },
     }
   }, { update })
   await page.goto('/')
   await expect(page.getByRole('tab')).toBeVisible()
 }
+
+async function privacySettings(page) {
+  await page.getByRole('button', { name: 'Settings', exact: true }).click()
+  await page.getByRole('tab', { name: 'Privacy & diagnostics', exact: true }).click()
+  await expect(page.getByRole('heading', { name: 'Sanitized local diagnostics', exact: true })).toBeVisible()
+}
+
+test.beforeEach(async ({ page }) => {
+  page.supportErrors = []
+  page.on('pageerror', error => page.supportErrors.push(error.message))
+})
+test.afterEach(async ({ page }) => {
+  expect(page.supportErrors, 'No renderer exceptions in support workflows').toEqual([])
+})
+
+test('Settings owns privacy in keyboard-accessible tabs and fits a 640x440 window', async ({ page }, info) => {
+  await desktop(page, { status: 'current' })
+  await page.setViewportSize({ width: 640, height: 440 })
+  await expect.soft(page.locator('footer #privacy-choice')).toHaveCount(0)
+  await page.getByRole('button', { name: 'Help', exact: true }).click()
+  await expect.soft(page.getByRole('menuitem', { name: 'Diagnostics & privacy', exact: true })).toHaveCount(0)
+  await page.keyboard.press('Escape')
+  for (const theme of ['light', 'dark']) {
+    await page.getByRole('combobox', { name: 'Quick theme' }).selectOption(theme)
+    await page.getByRole('button', { name: 'Settings', exact: true }).click()
+    const tabs = page.getByRole('tablist', { name: 'Settings sections' })
+    await expect(tabs.getByRole('tab')).toHaveText(['Appearance', 'Editor', 'Privacy & diagnostics', 'Updates'])
+    await tabs.getByRole('tab', { name: 'Appearance', exact: true }).focus()
+    for (const name of ['Editor', 'Privacy & diagnostics', 'Updates', 'Appearance']) {
+      await page.keyboard.press('ArrowRight')
+      const tab = tabs.getByRole('tab', { name, exact: true })
+      await expect(tab).toBeFocused()
+      await expect(tab).toHaveAttribute('aria-selected', 'true')
+      const panel = page.getByRole('tabpanel', { name, exact: true })
+      await expect(panel).toBeVisible()
+      if (name === 'Privacy & diagnostics') await expect(page.locator('#diagnostics-status')).toContainText('Off')
+      expect(await panel.evaluate(node => node.scrollWidth <= node.clientWidth)).toBe(true)
+      const box = await page.getByRole('dialog').boundingBox()
+      expect(box.x).toBeGreaterThanOrEqual(0)
+      expect(box.y).toBeGreaterThanOrEqual(0)
+      expect(box.x + box.width).toBeLessThanOrEqual(640)
+      expect(box.y + box.height).toBeLessThanOrEqual(440)
+      await expect(page.getByRole('button', { name: 'Done', exact: true })).toBeInViewport()
+      const path = info.outputPath(`settings-${theme}-${name.replaceAll(/[^a-z]+/gi, '-')}.png`)
+      await page.screenshot({ path })
+      await info.attach(`Settings ${theme} ${name}`, { path, contentType: 'image/png' })
+      await page.keyboard.press('Tab')
+      await expect(panel).toBeFocused()
+      await tab.focus()
+    }
+    await page.keyboard.press('End')
+    await expect(tabs.getByRole('tab', { name: 'Updates', exact: true })).toBeFocused()
+    await page.keyboard.press('Home')
+    await expect(tabs.getByRole('tab', { name: 'Appearance', exact: true })).toBeFocused()
+    await page.keyboard.press('ArrowLeft')
+    await expect(tabs.getByRole('tab', { name: 'Updates', exact: true })).toBeFocused()
+    await page.getByRole('button', { name: 'Done', exact: true }).click()
+  }
+  expect(await page.evaluate(() => supportCalls.some(x => String(x).startsWith('consent:')))).toBe(false)
+})
+
 
 test('startup only checks releases; user chooses download and installation after checkpoint', async ({ page }) => {
   await desktop(page)
@@ -80,7 +140,7 @@ test('current release notes are formatted and scrollable in light and dark at a 
     await preview.focus()
     await page.keyboard.press('End')
     await expect.poll(() => preview.evaluate(node => node.scrollTop)).toBeGreaterThan(0)
-    await page.getByRole('button', { name: 'Close', exact: true }).click()
+    await page.getByRole('button', { name: 'Done', exact: true }).click()
   }
 })
 
@@ -98,12 +158,11 @@ test('manual checks show a dialog while a request is pending', async ({ page }) 
 test('diagnostics require a decision and can be inspected and disabled', async ({ page }) => {
   await desktop(page, { status: 'current', version: '0.3.0' })
   expect(await page.evaluate(() => supportCalls.some(x => String(x).startsWith('consent:')))).toBe(false)
-  await page.getByRole('button', { name: 'Choose diagnostics privacy' }).click()
+  await privacySettings(page)
   await expect(page.getByRole('dialog')).toContainText('200')
   await expect(page.getByRole('dialog')).toContainText('document text')
   await page.getByRole('button', { name: 'Enable sanitized local logs', exact: true }).click()
-  await page.getByRole('button', { name: 'Help', exact: true }).click()
-  await page.getByRole('menuitem', { name: 'Diagnostics & privacy', exact: true }).click()
+  await expect(page.locator('#diagnostics-status')).toContainText('Enabled')
   await page.getByRole('button', { name: 'Inspect logs', exact: true }).click()
   await expect(page.locator('#diagnostics-preview')).toContainText('win32')
   await page.getByRole('button', { name: 'Back', exact: true }).click()
@@ -114,7 +173,7 @@ test('diagnostics require a decision and can be inspected and disabled', async (
 test('diagnostic read/clear failures warn about disk history and do not escape as page errors', async ({ page }) => {
   await desktop(page, { status: 'current' })
   const errors = []; page.on('pageerror', error => errors.push(error.message))
-  await page.getByRole('button', { name: 'Choose diagnostics privacy' }).click()
+  await privacySettings(page)
   await page.evaluate(() => {
     notepad.diagnosticsInspect = async () => { throw new Error('Synthetic failure') }
     notepad.diagnosticsClear = async () => { throw new Error('Synthetic failure') }
@@ -131,20 +190,24 @@ test('diagnostic read/clear failures warn about disk history and do not escape a
 test('late inspection or update completion never replaces a closed or unrelated dialog', async ({ page }) => {
   await desktop(page, { status: 'current' })
   await page.evaluate(() => { notepad.diagnosticsInspect = () => new Promise(resolve => { window.finishInspection = resolve }) })
-  await page.getByRole('button', { name: 'Choose diagnostics privacy' }).click()
+  await privacySettings(page)
   await page.getByRole('button', { name: 'Inspect logs' }).click()
-  await page.getByRole('button', { name: 'Close', exact: true }).click()
+  await page.getByRole('button', { name: 'Done', exact: true }).click()
   await page.getByRole('button', { name: 'Settings', exact: true }).click()
   await page.evaluate(() => finishInspection({ events: [] }))
   await expect(page.getByRole('dialog')).toHaveAccessibleName('Settings')
+  await expect(page.getByRole('tab', { name: 'Appearance', exact: true })).toHaveAttribute('aria-selected', 'true')
+  await expect(page.locator('#diagnostics-preview')).toHaveCount(0)
   await page.getByRole('button', { name: 'Done' }).click()
   await page.evaluate(() => { notepad.checkUpdates = () => new Promise(resolve => { window.finishUpdate = resolve }) })
   await page.getByRole('button', { name: 'Help', exact: true }).click()
   await page.getByRole('menuitem', { name: 'Check updates', exact: true }).click()
-  await page.getByRole('button', { name: 'Close', exact: true }).click()
+  await page.getByRole('button', { name: 'Done', exact: true }).click()
   await page.getByRole('button', { name: 'Settings', exact: true }).click()
   await page.evaluate(() => finishUpdate({ status: 'current' }))
   await expect(page.getByRole('dialog')).toHaveAccessibleName('Settings')
+  await expect(page.getByRole('tab', { name: 'Appearance', exact: true })).toHaveAttribute('aria-selected', 'true')
+  await expect(page.locator('#diagnostics-preview')).toHaveCount(0)
 })
 
 test('meaningful UI actions produce only enum diagnostics, not typed text or search strings', async ({ page }) => {
@@ -162,21 +225,13 @@ test('meaningful UI actions produce only enum diagnostics, not typed text or sea
   expect(JSON.stringify(events)).not.toContain('PRIVATE')
 })
 
-test('report composer sends only explicitly reviewed text and defaults to excluding diagnostics', async ({ page }) => {
-  await desktop(page, { status: 'current', version: '0.3.0' })
-  await page.locator('.tiptap').fill('PRIVATE DOCUMENT SENTINEL')
+test('bug reporting is absent from Help and Settings while local diagnostics remain available', async ({ page }) => {
+  await desktop(page, { status: 'current' })
   await page.getByRole('button', { name: 'Help', exact: true }).click()
-  await page.getByRole('menuitem', { name: 'Report a bug', exact: true }).click()
-  await expect(page.getByRole('checkbox', { name: 'Include sanitized diagnostics' })).not.toBeChecked()
-  await page.getByRole('textbox', { name: 'Report title' }).fill('Preview defect')
-  await page.getByRole('textbox', { name: 'Steps to reproduce' }).fill('1. Switch to preview')
-  await page.getByRole('textbox', { name: 'Expected behavior' }).fill('Show the list')
-  await page.getByRole('textbox', { name: 'Actual behavior' }).fill('The list is missing')
-  await page.getByRole('button', { name: 'Review report', exact: true }).click()
-  await expect(page.locator('#bug-preview')).not.toContainText('PRIVATE DOCUMENT SENTINEL')
-  await expect(page.locator('#bug-preview')).toContainText('Switch to preview')
-  await page.getByRole('button', { name: 'Open GitHub issue', exact: true }).click()
-  const report = await page.evaluate(() => supportCalls.find(x => x?.report)?.report)
-  expect(report.includeDiagnostics).toBe(false)
-  expect(report.body).not.toContain('PRIVATE DOCUMENT SENTINEL')
+  await expect(page.getByRole('menuitem', { name: 'Report a bug', exact: true })).toHaveCount(0)
+  await expect(page.getByRole('menuitem')).toHaveText(['Check updates', 'Release notes'])
+  await page.keyboard.press('Escape')
+  await privacySettings(page)
+  await expect(page.getByRole('button', { name: 'Inspect logs', exact: true })).toBeVisible()
+  await expect(page.getByRole('dialog')).not.toContainText(/Send report|Maintainer inbox|private email/i)
 })

@@ -1,5 +1,11 @@
 # Changes
 
+## 0.3.4
+
+- Removed in-app bug reporting and its browser/IPC entry points. Unfinished email reporting is preserved on a local development branch only.
+- Settings now has Appearance, Editor, Privacy & diagnostics, and Updates tabs.
+- Diagnostics controls moved off the status bar into Settings; logs remain opt-in and local, with inspection/export/clear controls.
+
 ## 0.3.3
 
 - Release notes now display formatted Markdown headings, lists, emphasis, tables and code instead of raw source text.

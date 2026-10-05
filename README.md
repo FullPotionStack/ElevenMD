@@ -31,15 +31,11 @@ Checking contacts GitHub and exposes the normal network information a request ca
 
 A checksum detects a damaged or mismatched download; it is not a code signature or protection against an attacker controlling this repository. GitHub release installers, rather than `git clone`, update the installed Windows app.
 
-## Bug reports and privacy
+## Local diagnostics and privacy
 
-Use **Help → Report a bug** to describe reproduction steps, expected behavior, and actual behavior. ElevenMD shows the exact draft before opening GitHub. You need your own GitHub account and choose whether to submit it. Reports are public.
+Optional diagnostics are **off until you consent**. If enabled, they keep the last 200 meaningful actions for up to 7 days on your computer. They record action categories and outcomes, not document text, typing, clipboard contents, file names or paths, URLs, search strings, screenshots, credentials, or identifying machine/user information.
 
-Optional diagnostics are **off until you consent**. If enabled, they keep the last 200 meaningful actions for up to 7 days on your computer. They record action categories and outcomes, not document text, typing, clipboard contents, file names or paths, URLs, search strings, screenshots, credentials, or identifying machine/user information. They do not record your whole session.
-
-**Help → Diagnostics & privacy** lets you inspect the exact log, clear it, export a sanitized JSON file, or disable logging and delete the local history. Nothing uploads automatically. A report can include a small safe diagnostics summary only when you select it; attach longer exported logs yourself after reviewing them.
-
-Report text receives basic redaction for obvious paths, email addresses, URLs, and common credential formats. That cannot identify every secret in free text. Review what you write before sharing it. See [diagnostics details](docs/PRIVACY.md).
+**Settings → Privacy & diagnostics** lets you inspect, clear, export, or disable and delete the local history. Logs are never uploaded. Built-in bug reporting is not available in this build. See [diagnostics details](docs/PRIVACY.md).
 
 ## Build from source
 
@@ -59,7 +55,7 @@ npm start
 
 ## Fork distribution requirements
 
-Before distributing a modified fork, you **MUST change the update and bug-report destination to your own repository** in `electron/distribution.cjs`. Do not ship a fork that checks `FullPotionStack/ElevenMD` for updates or sends its reports here. Set `installerPrefix` to your own installer asset prefix, and publish a matching `<prefix>-<version>.exe` plus `SHA256SUMS`.
+Before distributing a modified fork, you **MUST change the update destination to your own repository** in `electron/distribution.cjs`. Do not ship a fork that checks `FullPotionStack/ElevenMD` for updates. Set `installerPrefix` to your own installer asset prefix, and publish a matching `<prefix>-<version>.exe` plus `SHA256SUMS`.
 
 Windows packaging refuses a distribution whose configured repository does not match its GitHub `origin`. This is a build safeguard against accidental upstream targeting, not a restriction added to the MIT license. Deliberately removing the safeguard cannot be prevented by open-source code.
 

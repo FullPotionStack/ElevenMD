@@ -330,7 +330,7 @@ test('native open/save IPC is capability-scoped and dirty close waits for render
   await fake.invoke('close-window');
   assert.equal(win.isDestroyed(), true);
 });
-test('support IPC requires consent, exports exact safe logs and opens only a reviewed project issue draft', async t => {
+test('support IPC requires consent, exports exact safe local logs without reporting endpoints', async t => {
   const dir = await fixture(t), fake = fakeElectron();
   fake.electron.app.getPath = () => dir;
   fake.electron.app.getVersion = () => '0.3.0';
@@ -348,13 +348,9 @@ test('support IPC requires consent, exports exact safe logs and opens only a rev
   fake.dialog.saveResult = { canceled: false, filePath: path.join(dir, 'export.json') };
   assert.equal(await fake.invoke('diagnostics-export'), true);
   assert.equal(JSON.parse(await fs.readFile(path.join(dir, 'export.json'), 'utf8')).events.length, 1);
-  const draft = await fake.invoke('prepare-bug-report', { title: 'Format defect', body: 'Steps: make bold', includeDiagnostics: true });
-  assert.match(draft.body, /bold/);
-  assert.equal(await fake.invoke('report-bug', { ...draft, body: draft.body + '\nUNREVIEWED' }), false);
-  fake.dialog.response = 0;
-  assert.equal(await fake.invoke('report-bug', draft), true);
-  assert.equal(new URL(external.at(-1)).pathname, '/FullPotionStack/ElevenMD/issues/new');
-  assert.equal(new URL(external.at(-1)).searchParams.get('body'), draft.body);
+  assert.equal(fake.handlers.has('notepad:prepare-bug-report'), false);
+  assert.equal(fake.handlers.has('notepad:report-bug'), false);
+  assert.deepEqual(external, []);
   await assert.rejects(fake.invoke('updates-check', 'https://attacker.test'), /argument|invalid/i);
   await fake.invoke('diagnostics-consent', false);
   assert.equal((await fake.invoke('diagnostics-inspect')).events.length, 0);
@@ -373,12 +369,12 @@ test('sandboxed preload exposes only fixed document APIs and strips Electron eve
   let api;
   const electron = { ipcRenderer: ipc, contextBridge: { exposeInMainWorld(name, value) { assert.equal(name, 'notepad'); api = value; } } };
   vm.runInNewContext(source, { require(name) { assert.equal(name, 'electron'); return electron; } });
-  assert.deepEqual(Object.keys(api).sort(), ['closeWindow', 'confirmClose', 'initialFiles', 'importImage', 'onAction', 'resolveImage', 'open', 'openLink', 'preferences', 'restoreSession', 'save', 'saveSession', 'setDirty', 'updatesState', 'checkUpdates', 'downloadUpdate', 'installUpdate', 'checkpointUpdate', 'openRelease', 'diagnosticsState', 'diagnosticsConsent', 'diagnosticsInspect', 'diagnosticsClear', 'diagnosticsExport', 'recordDiagnostic', 'prepareBugReport', 'reportBug'].sort());
+  assert.deepEqual(Object.keys(api).sort(), ['closeWindow', 'confirmClose', 'initialFiles', 'importImage', 'onAction', 'resolveImage', 'open', 'openLink', 'preferences', 'restoreSession', 'save', 'saveSession', 'setDirty', 'updatesState', 'checkUpdates', 'downloadUpdate', 'installUpdate', 'checkpointUpdate', 'openRelease', 'diagnosticsState', 'diagnosticsConsent', 'diagnosticsInspect', 'diagnosticsClear', 'diagnosticsExport', 'recordDiagnostic'].sort());
   for (const [method, channel, args] of [
     ['open', 'open', []], ['initialFiles', 'initial-files', []],
     ['updatesState', 'updates-state', []], ['checkUpdates', 'updates-check', []], ['downloadUpdate', 'updates-download', []], ['installUpdate', 'updates-install', []], ['openRelease', 'open-release', []],
     ['diagnosticsState', 'diagnostics-state', []], ['diagnosticsConsent', 'diagnostics-consent', [false]], ['diagnosticsInspect', 'diagnostics-inspect', []], ['diagnosticsClear', 'diagnostics-clear', []], ['diagnosticsExport', 'diagnostics-export', []],
-    ['recordDiagnostic', 'record-diagnostic', [{ type: 'mode_changed', mode: 'source' }]], ['checkpointUpdate', 'checkpoint-update', [{ token: 'test', snapshot: {} }]], ['prepareBugReport', 'prepare-bug-report', [{ title: 'Test', body: 'Steps', includeDiagnostics: false }]], ['reportBug', 'report-bug', [{ title: 'Test', body: 'Steps', includeDiagnostics: false }]],
+    ['recordDiagnostic', 'record-diagnostic', [{ type: 'mode_changed', mode: 'source' }]], ['checkpointUpdate', 'checkpoint-update', [{ token: 'test', snapshot: {} }]],
     ['openLink', 'open-link', ['https://example.com']],
     ['resolveImage', 'resolve-image', [{ id: randomUUID(), source: 'assets/photo.png' }]], ['importImage', 'import-image', [{ id: randomUUID() }]],
     ['restoreSession', 'restore-session', []], ['saveSession', 'save-session', [{ tabs: [], activeId: null, mode: 'source' }]],
