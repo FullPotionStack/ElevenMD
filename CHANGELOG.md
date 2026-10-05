@@ -1,5 +1,10 @@
 # Changes
 
+## 0.3.2
+
+- Fixed Windows update installation being aborted when Restart Manager tried to close unrelated security software. Setup no longer closes or restarts other applications; the updater checkpoints and closes ElevenMD itself.
+- Update launches explicitly disallow automatic operating-system restarts.
+
 ## 0.3.1
 
 - Fixed real GitHub update checks: compressed HTTP response lengths are no longer compared with decoded JSON lengths. Decoded streaming bounds and installer SHA-256 checks remain enforced.

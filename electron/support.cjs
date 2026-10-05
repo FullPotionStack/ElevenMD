@@ -27,7 +27,7 @@ async function setupSupport({ electron, window, handle, userData, version, check
     beforeInstall: async () => { if (typeof checkpoint !== 'function') throw new Error('Checkpoint unavailable.'); await checkpoint(); },
     launchInstaller: async filename => {
       // Keep upgrades in an installed app's own directory; portable users get a normal install.
-      const args = ['/UPDATE'];
+      const args = ['/UPDATE', '/NOCLOSEAPPLICATIONS', '/NORESTART'];
       if (app.isPackaged && await fs.stat(path.join(path.dirname(process.execPath), 'unins000.exe')).then(s => s.isFile(), () => false)) args.push(`/DIR=${path.dirname(process.execPath)}`);
       await new Promise((resolve, reject) => {
         const child = spawn(filename, args, { shell: false, detached: true, stdio: 'ignore' });

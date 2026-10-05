@@ -32,6 +32,9 @@ WizardStyle=modern
 Compression=lzma2
 SolidCompression=yes
 ChangesAssociations=yes
+; The updater closes only ElevenMD after checkpointing. Do not stop injected security services.
+CloseApplications=no
+RestartApplications=no
 
 [Tasks]
 Name: "desktopicon"; Description: "Create a desktop shortcut"; GroupDescription: "Shortcuts:"; Flags: unchecked

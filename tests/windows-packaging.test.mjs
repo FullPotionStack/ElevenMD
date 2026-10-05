@@ -14,6 +14,15 @@ test('packaging brands the copied PE before reporting success and has a scratch-
   assert.ok(text.indexOf('await brandWindowsExecutable(') < text.indexOf('Windows app packaged:'))
 })
 
+test('installer and update launcher never close unrelated apps or request an OS restart', async () => {
+  const installer = await readFile(installerSource, 'utf8')
+  const launcher = await readFile(new URL('../electron/support.cjs', import.meta.url), 'utf8')
+  assert.match(installer, /^CloseApplications=no$/m)
+  assert.match(installer, /^RestartApplications=no$/m)
+  assert.match(launcher, /const args = \['\/UPDATE', '\/NOCLOSEAPPLICATIONS', '\/NORESTART'\]/)
+  assert.doesNotMatch(installer, /CloseApplications=force/)
+})
+
 test('installer app identity is friendly, optional, correctly quoted and scoped on uninstall', async () => {
   const text = await readFile(installerSource, 'utf8')
   const registry = text.split('[Registry]')[1].split('\n[')[0].split('\n').filter(line => line.startsWith('Root:'))
