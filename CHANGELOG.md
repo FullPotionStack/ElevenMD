@@ -1,5 +1,11 @@
 # Changes
 
+## 0.3.3
+
+- Release notes now display formatted Markdown headings, lists, emphasis, tables and code instead of raw source text.
+- The release-note renderer disables HTML, links and image loading and sanitizes its output. The separate GitHub release-page button remains available.
+- Release notes support keyboard scrolling and light/dark themes; diagnostic and report previews remain exact plain text.
+
 ## 0.3.2
 
 - Fixed Windows update installation being aborted when Restart Manager tried to close unrelated security software. Setup no longer closes or restarts other applications; the updater checkpoints and closes ElevenMD itself.

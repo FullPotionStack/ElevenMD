@@ -1,3 +1,5 @@
+import { renderReleaseNotes } from './release-notes.js'
+
 export function setupSupport({ api, checkpoint, showMenu, toast }) {
   const $ = s => document.querySelector(s)
   let update = { status: 'idle' }, diagnostics = { consent: null, count: 0 }
@@ -32,10 +34,10 @@ export function setupSupport({ api, checkpoint, showMenu, toast }) {
     if (owns(updateHeading)) updates()
   }
   function updates() {
-    dialog(`<h2>Updates</h2><p id="update-description"></p><pre id="release-notes" class="support-preview"></pre><div class="support-actions"><button id="check-updates">Check updates</button><button id="release-page">Release notes on GitHub</button><button id="download-update" class="primary" hidden>Download update</button><button id="install-update" class="primary" hidden>Install and restart</button></div><p class="small muted">Checking contacts GitHub. Downloads and installation only happen when you choose them. Installing checkpoints your tabs first; it does not save over your document files.</p><div class="dialog-actions"><button id="support-close">Close</button></div>`, 'updates')
+    dialog(`<h2>Updates</h2><p id="update-description"></p><div id="release-notes" class="release-notes" role="region" aria-label="Release notes" tabindex="0"></div><div class="support-actions"><button id="check-updates">Check updates</button><button id="release-page">Release notes on GitHub</button><button id="download-update" class="primary" hidden>Download update</button><button id="install-update" class="primary" hidden>Install and restart</button></div><p class="small muted">Checking contacts GitHub. Downloads and installation only happen when you choose them. Installing checkpoints your tabs first; it does not save over your document files.</p><div class="dialog-actions"><button id="support-close">Close</button></div>`, 'updates')
     updateHeading = $('#modal h2')
     $('#update-description').textContent = update.status === 'available' ? `Version ${update.version} is available.` : update.status === 'downloaded' ? `Version ${update.version} is downloaded and verified.` : update.status === 'current' ? 'You are up to date.' : update.status === 'error' ? update.error || 'Could not check for updates. Try again when you are online.' : update.status === 'unpublished' ? 'There are no published releases yet.' : update.status === 'checking' ? 'Checking GitHub for a newer release…' : update.status === 'downloading' ? 'Downloading and verifying the installer…' : 'Check GitHub for a newer release.'
-    $('#release-notes').textContent = update.notes || 'Release notes appear here when an update is available.'
+    $('#release-notes').innerHTML = renderReleaseNotes(update.notes || 'Release notes appear here when an update is available.')
     $('#download-update').hidden = update.status !== 'available'
     $('#install-update').hidden = update.status !== 'downloaded'
     $('#check-updates').onclick = () => check(true)

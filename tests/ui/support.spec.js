@@ -41,6 +41,49 @@ test('startup only checks releases; user chooses download and installation after
   expect(calls.indexOf('checkpoint')).toBeLessThan(calls.indexOf('install'))
 })
 
+test('release notes render Markdown structure instead of raw source and stay inert', async ({ page }) => {
+  const requests = []
+  page.on('request', request => { if (request.url().includes('release-image.invalid')) requests.push(request.url()) })
+  const notes = '# Changes\n\n## 0.4.0\n\n- **Fixed** update checks\n- Use `SHA256SUMS`\n\n> Keep your drafts.\n\n```js\nconst safe = "<script>never execute</script>";\n```\n\n| Change | Status |\n| --- | --- |\n| Markdown | Fixed |\n\n<script>window.releaseExecuted = true</script>\n<img src="https://release-image.invalid/track.png" onerror="window.releaseExecuted = true">\n![Tracking](https://release-image.invalid/track.png)\n[Unsafe](javascript:alert(1))\n[External](https://example.com)'
+  await desktop(page, { status: 'available', version: '0.4.0', notes })
+  await page.getByRole('button', { name: 'Update available: 0.4.0' }).click()
+  const preview = page.locator('#release-notes')
+  await expect(preview.getByRole('heading', { name: 'Changes', exact: true })).toBeVisible()
+  await expect(preview.getByRole('heading', { name: '0.4.0', exact: true })).toBeVisible()
+  await expect(preview.locator('ul > li')).toHaveCount(2)
+  await expect(preview.locator('strong')).toHaveText('Fixed')
+  await expect(preview.locator('li code')).toHaveText('SHA256SUMS')
+  await expect(preview.locator('blockquote')).toContainText('Keep your drafts.')
+  await expect(preview.locator('pre code')).toContainText('<script>never execute</script>')
+  await expect(preview.locator('table th')).toHaveCount(2)
+  await expect(preview.locator('script, img, a, iframe, style, [onclick], [onerror]')).toHaveCount(0)
+  expect(await page.evaluate(() => window.releaseExecuted)).toBeUndefined()
+  expect(requests).toEqual([])
+  expect(await preview.evaluate(node => getComputedStyle(node).whiteSpace)).toBe('normal')
+  expect(await preview.evaluate(node => getComputedStyle(node).fontFamily)).not.toContain('Consolas')
+  await page.getByRole('button', { name: 'Download update', exact: true }).click()
+  await expect(preview.getByRole('heading', { name: 'Changes', exact: true })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Install and restart', exact: true })).toBeVisible()
+})
+
+test('current release notes are formatted and scrollable in light and dark at a narrow size', async ({ page }) => {
+  await desktop(page, { status: 'current', notes: '# Changes\n\n## 0.4.0\n\n' + '- A readable release note.\n'.repeat(60) })
+  await page.setViewportSize({ width: 640, height: 440 })
+  for (const theme of ['light', 'dark']) {
+    await page.getByRole('combobox', { name: 'Quick theme' }).selectOption(theme)
+    await page.getByRole('button', { name: 'Help', exact: true }).click()
+    await page.getByRole('menuitem', { name: 'Release notes', exact: true }).click()
+    const preview = page.locator('#release-notes')
+    await expect(preview.getByRole('heading', { name: 'Changes', exact: true })).toBeVisible()
+    expect(await preview.evaluate(node => node.scrollHeight > node.clientHeight)).toBe(true)
+    expect(await preview.evaluate(node => node.scrollWidth <= node.clientWidth)).toBe(true)
+    await preview.focus()
+    await page.keyboard.press('End')
+    await expect.poll(() => preview.evaluate(node => node.scrollTop)).toBeGreaterThan(0)
+    await page.getByRole('button', { name: 'Close', exact: true }).click()
+  }
+})
+
 test('manual checks show a dialog while a request is pending', async ({ page }) => {
   await desktop(page, { status: 'current' })
   await page.evaluate(() => { notepad.checkUpdates = () => new Promise(resolve => { window.finishCheck = resolve }) })

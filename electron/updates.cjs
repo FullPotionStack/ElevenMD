@@ -69,7 +69,9 @@ function plainNotes(value) {
  * getState() is a defensive copy; zero-argument check()/download()/install() return it.
  * State: { status, currentVersion, version: availableVersion|null, notes, releaseUrl, error }.
  * Status: idle/checking/available/current/error/unpublished/downloading/downloaded.
- * Never render notes as HTML/Markdown; use textContent. No paths enter public state.
+ * Notes retain Markdown syntax, not trusted HTML. Render with the dedicated
+ * sanitized, resource-free release-note renderer; never assign raw notes to innerHTML.
+ * No paths enter public state.
  *
  * install() fails closed unless these MAIN-owned hooks are supplied:
  * confirmInstall(state): native dialog, resolve exactly true to proceed;
