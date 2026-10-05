@@ -4,7 +4,7 @@
 
 The final local verification passed **93 unit tests and 86 Chromium UI tests**, including 40 writing-workflow scenarios. Packaged Windows checks passed for files, sessions, images, executable branding, diagnostics and the installer lifecycle. This is a bounded acceptance run, not a claim that every possible document or device works.
 
-Browser tests use real typing, selections, toolbar/menu commands, HTML dialogs, tabs and Preview DOM. They simulate native dialogs at the desktop bridge. Separate Electron tests exercise actual IPC and disk bytes. A desktop UI run used the real Windows Save and Save As dialogs and verified the resulting files. Tests use isolated profiles and synthetic documents only.
+Browser tests use real typing, selections, toolbar/menu commands, HTML dialogs, tabs and Preview DOM. They simulate native dialogs at the desktop bridge. Separate Electron tests exercise actual IPC and disk bytes. A separate 0.3.0 desktop UI run used the real Windows Save and Save As dialogs and verified the resulting files; 0.3.2 file handling was rechecked through installed Electron IPC. Tests use isolated profiles and synthetic documents only.
 
 ## User scenarios exercised
 
@@ -67,6 +67,12 @@ No screen-reader, high-DPI, IME, destructive power-loss, machine-reboot or Linux
 
 PE resources, friendly Windows registration, installed launches and actual Save-dialog icons were verified. A direct Open with chooser probe returned a Windows shell error, so that visible chooser itself is not certified by the probe.
 
-Real public release download/update verification follows publication. Unit tests cover trusted hosts, checksums, cancellation, tampering, bounds and serialization; simulated responses alone do not prove the public path.
+## Published update verification
+
+The published 0.3.2 release was tested against the real anonymous GitHub API and its real installer asset. The installed main/renderer path verified checksums, respected native cancellation, checkpointed named and unnamed edited tabs, launched the real installer, and recovered both buffers after replacement/relaunch without changing the original file bytes. The latest installed updater/support modules matched the source exactly.
+
+The upgrade fixture changed only its scratch package version to simulate an older release and controlled native confirmation/silent installer decisions. It deliberately omitted the new launcher’s `/NOCLOSEAPPLICATIONS` flag to prove the new installer’s default also fixes legacy callers. This is not a claim that an unchanged 0.3.0 updater can perform the compressed-response fix itself; users of 0.3.0 should install the latest release manually.
+
+An immediate post-publication download initially failed closed; a subsequent run and a repeat with no debugging instrumentation completed the full update path. The initial network/delivery failure was not diagnosed, so this does not certify transient network reliability. Unit tests separately cover trusted hosts, checksums, cancellation, tampering, bounds and serialization. The final normal-user 0.3.2 installation also passed file IPC and support/privacy checks in isolated profiles.
 
 Releases remain unsigned. SHA-256 verifies release-relative integrity, not independent publisher authenticity.
