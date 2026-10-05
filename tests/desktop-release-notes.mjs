@@ -1,6 +1,6 @@
 import { _electron as electron, expect } from '@playwright/test'
 import assert from 'node:assert/strict'
-import { mkdtemp, rm } from 'node:fs/promises'
+import { mkdtemp, rm, readFile } from 'node:fs/promises'
 import path from 'node:path'
 import { testScratch, closeTestApp, packagedExecutable } from './helpers/electron-harness.mjs'
 
@@ -14,6 +14,28 @@ try {
   const page = await app.firstWindow(), errors = []
   page.on('pageerror', error => errors.push(error.message))
   await expect(page.getByRole('tab')).toBeVisible()
+  const recordedIndex = process.argv.indexOf('--recorded-release')
+  if (recordedIndex !== -1) {
+    // Explicit recorded-transport lane for rate-limited/offline verification.
+    // This changes only handlers in this harness-owned process, never shipped files.
+    await expect.poll(() => page.evaluate(() => notepad.updatesState().then(state => state.status)), { timeout: 20000 }).toMatch(/current|error|available|unpublished/)
+    const recorded = JSON.parse(await readFile(process.argv[recordedIndex + 1], 'utf8'))
+    await app.evaluate(({ app, ipcMain }, release) => {
+      const require = process.getBuiltinModule('node:module').createRequire(app.getAppPath() + '/package.json')
+      const { createUpdateService } = require('./electron/updates.cjs')
+      const distribution = require('./electron/distribution.cjs')
+      const api = `https://api.github.com/repos/${distribution.repository}/releases/latest`
+      const service = createUpdateService({ version: app.getVersion(), repository: distribution.repository,
+        downloadsDir: app.getPath('userData') + '/recorded-updates', fetchImpl: async url => {
+          if (url !== api) throw new Error('Recorded lane must not fetch assets.')
+          return new Response(JSON.stringify(release), { headers: { 'Content-Type': 'application/json' } })
+        } })
+      ipcMain.removeHandler('notepad:updates-check'); ipcMain.removeHandler('notepad:updates-state')
+      ipcMain.handle('notepad:updates-check', () => service.check())
+      ipcMain.handle('notepad:updates-state', () => service.getState())
+    }, recorded)
+    console.log('Recorded public-release transport selected; this is not live-network verification.')
+  }
   for (const theme of ['light', 'dark']) {
     await page.getByRole('combobox', { name: 'Quick theme' }).selectOption(theme)
     await page.getByRole('button', { name: 'Help', exact: true }).click()

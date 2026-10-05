@@ -1,5 +1,11 @@
 # Writing-workflow QA
 
+## Release 0.3.3
+
+93 unit tests and 88 Chromium UI tests passed. The release-note regression failed on the old plain-text display and passed with semantic headings, lists, emphasis, code and tables. Tests also verify no active HTML, hyperlinks or image requests, formatting after download, keyboard scrolling and narrow light/dark layouts. Packaged file and support/privacy checks passed.
+
+The normal-user installation was upgraded to 0.3.3 through a normal checkpointed close. Its update dialog was checked and screenshotted in light/dark using the actual published GitHub release response, delivered through an explicitly controlled test transport to the real installed update service and IPC. The anonymous live API returned HTTP 403 with zero remaining quota after repeated QA requests; that live check is blocked, not a passing result. The optional `--recorded-release <json>` lane in `tests/desktop-release-notes.mjs` labels this distinction and modifies only harness-owned handlers, never installed files.
+
 ## Release 0.3.2
 
 The final local verification passed **93 unit tests and 86 Chromium UI tests**, including 40 writing-workflow scenarios. Packaged Windows checks passed for files, sessions, images, executable branding, diagnostics and the installer lifecycle. This is a bounded acceptance run, not a claim that every possible document or device works.
