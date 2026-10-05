@@ -5,7 +5,7 @@ export function setupSupport({ api, checkpoint, showMenu, toast, openSettings })
   let update = { status: 'idle' }, diagnostics = { consent: null, count: 0 }
   let busy = false, updateHeading
   const owns = heading => $('#modal').open && heading?.isConnected && !heading.closest('[hidden]')
-  const privacyText = () => diagnostics.storageError ? 'Collection is disabled in this process. Windows could not update or delete diagnostics storage; old disk logs may remain and a previous consent choice could return after restart. Check file permissions before restarting.' : `${diagnostics.consent === true ? 'Enabled' : 'Off'} · ${diagnostics.count || 0} recorded actions`
+  const privacyText = () => diagnostics.storageError ? 'Collection is disabled in this process. The system could not update or delete diagnostics storage; old disk logs may remain and a previous consent choice could return after restart. Check file permissions before restarting.' : `${diagnostics.consent === true ? 'Enabled' : 'Off'} · ${diagnostics.count || 0} recorded actions`
   async function privacyFailure(action, heading) {
     try { diagnostics = await api.diagnosticsState() } catch { diagnostics = { consent: false, count: 0, storageError: 'diagnostics_storage' } }
     status()
@@ -30,9 +30,13 @@ export function setupSupport({ api, checkpoint, showMenu, toast, openSettings })
     target.innerHTML = `<h3>Updates</h3><p id="update-description"></p><div id="release-notes" class="release-notes" role="region" aria-label="Release notes" tabindex="0"></div><div class="support-actions"><button id="check-updates">Check updates</button><button id="release-page">Release notes on GitHub</button><button id="download-update" class="primary" hidden>Download update</button><button id="install-update" class="primary" hidden>Install and restart</button></div><p class="small muted">Checking contacts GitHub. Downloads and installation only happen when you choose them. Installing checkpoints your tabs first; it does not save over your document files.</p>`
     updateHeading = target.querySelector('h3')
     $('#update-description').textContent = update.status === 'available' ? `Version ${update.version} is available.` : update.status === 'downloaded' ? `Version ${update.version} is downloaded and verified.` : update.status === 'current' ? 'You are up to date.' : update.status === 'error' ? update.error || 'Could not check for updates. Try again when you are online.' : update.status === 'unpublished' ? 'There are no published releases yet.' : update.status === 'checking' ? 'Checking GitHub for a newer release…' : update.status === 'downloading' ? 'Downloading and verifying the installer…' : 'Check GitHub for a newer release.'
+    if (update.manualDownload) {
+      $('#release-page').textContent = 'Download for your platform on GitHub'
+      target.querySelector('.small.muted').textContent = 'Checking contacts GitHub. On Linux and macOS, choose the matching installer or portable archive on the release page, then install it yourself after closing the app. This app does not download or run installers on these platforms.'
+    }
     $('#release-notes').innerHTML = renderReleaseNotes(update.notes || 'Release notes appear here when an update is available.')
-    $('#download-update').hidden = update.status !== 'available'
-    $('#install-update').hidden = update.status !== 'downloaded'
+    $('#download-update').hidden = update.manualDownload === true || update.status !== 'available'
+    $('#install-update').hidden = update.manualDownload === true || update.status !== 'downloaded'
     $('#check-updates').onclick = () => check(true)
     $('#release-page').onclick = () => api?.openRelease?.().catch(() => toast('Could not open the release page.'))
     $('#download-update').onclick = async () => {

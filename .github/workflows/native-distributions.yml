@@ -1,0 +1,179 @@
+name: Native Linux and macOS distributions
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: 'Existing release tag (vX.Y.Z) matching main package version; build main without rewriting the tag. Blank uploads CI artifacts only'
+        required: false
+        type: string
+        default: ''
+  release:
+    types: [published]
+  push:
+    branches: [main]
+    paths:
+      - 'scripts/**'
+      - 'electron/**'
+      - 'src/**'
+      - 'public/**'
+      - 'package*.json'
+      - 'vite.config.*'
+      - '.github/workflows/native-distributions.yml'
+  pull_request:
+    paths:
+      - 'scripts/**'
+      - 'electron/**'
+      - 'src/**'
+      - 'public/**'
+      - 'package*.json'
+      - 'vite.config.*'
+      - '.github/workflows/native-distributions.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: native-distributions-${{ github.event_name }}-${{ github.ref }}-${{ inputs.release_tag }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  build:
+    name: ${{ matrix.platform }} ${{ matrix.arch }}
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: linux
+            arch: x64
+            runner: ubuntu-24.04
+          - platform: linux
+            arch: arm64
+            runner: ubuntu-24.04-arm
+          - platform: mac
+            arch: x64
+            runner: macos-15-intel
+          - platform: mac
+            arch: arm64
+            runner: macos-15
+    env:
+      TARGET_PLATFORM: ${{ matrix.platform }}
+      TARGET_ARCH: ${{ matrix.arch }}
+      RELEASE_TAG: ${{ inputs.release_tag || github.event.release.tag_name }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - name: Validate native runner and optional release version
+        shell: bash
+        run: |
+          if [[ -n "$RELEASE_TAG" && "${{ github.event_name }}" == workflow_dispatch ]]; then
+            test "${{ github.ref }}" = refs/heads/main
+          fi
+          printf 'TMPDIR=%s\n' "$RUNNER_TEMP" >> "$GITHUB_ENV"
+          printf 'Build source: `%s`; target release: `%s`\n' '${{ github.sha }}' "$RELEASE_TAG" >> "$GITHUB_STEP_SUMMARY"
+          node --input-type=module -e '
+            import assert from "node:assert/strict";
+            import { readFileSync } from "node:fs";
+            const pkg = JSON.parse(readFileSync("package.json", "utf8"));
+            assert.equal(process.arch, process.env.TARGET_ARCH);
+            assert.equal(process.platform, process.env.TARGET_PLATFORM === "mac" ? "darwin" : "linux");
+            if (process.env.RELEASE_TAG) assert.equal(process.env.RELEASE_TAG, `v${pkg.version}`, "Release tag must match package.json exactly");
+          '
+      - name: Install native Electron and locked dependencies
+        run: npm ci
+      - name: Packaging unit and fixture tests
+        run: npm run test:packaging
+      - name: Platform-neutral application unit tests
+        # The full legacy suite assumes LOCALAPPDATA and Windows titleBarOverlay.
+        # Keep those tests unchanged; packaging and actual native launches run below.
+        run: node --test tests/brand-assets.test.mjs tests/harness.test.mjs tests/images.test.mjs tests/source-history.test.mjs tests/updates.test.mjs
+      - name: Build native distributions
+        shell: bash
+        run: npm run "package:${TARGET_PLATFORM}"
+      - name: Verify and launch Linux installer and extracted portable
+        if: matrix.platform == 'linux'
+        shell: bash
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y xvfb
+          # Disposable CI runner only: allow Chromium's namespace sandbox under Ubuntu AppArmor.
+          # This does not change the shipped launcher or pass --no-sandbox.
+          sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+          (cd release && sha256sum -c *-linux-*-SHA256SUMS.txt)
+          sudo apt-get install -y ./release/*-linux-*.deb
+          test "$(stat -c '%u %a' /opt/elevenmd/chrome-sandbox)" = '0 4755'
+          NOTEPAD_EXECUTABLE_PATH=/opt/elevenmd/elevenmd xvfb-run -a npm run test:packaging:smoke
+          portable="$RUNNER_TEMP/elevenmd-portable"
+          mkdir -p "$portable"
+          tar -xzf release/*-linux-*-portable.tar.gz -C "$portable"
+          executable=$(find "$portable" -mindepth 2 -maxdepth 2 -name elevenmd -type f)
+          test -n "$executable"
+          NOTEPAD_EXECUTABLE_PATH="$executable" xvfb-run -a npm run test:packaging:smoke
+      - name: Verify and launch macOS DMG installation and extracted portable
+        if: matrix.platform == 'mac'
+        shell: bash
+        run: |
+          (cd release && shasum -a 256 -c *-mac-*-SHA256SUMS.txt)
+          zip_app="$RUNNER_TEMP/elevenmd-portable"
+          mkdir -p "$zip_app"
+          ditto -x -k release/*-mac-*-portable.zip "$zip_app"
+          codesign --verify --deep --strict "$zip_app/ElevenMD.app"
+          NOTEPAD_EXECUTABLE_PATH="$zip_app/ElevenMD.app/Contents/MacOS/ElevenMD" npm run test:packaging:smoke
+          mount="$RUNNER_TEMP/elevenmd-volume"
+          hdiutil attach release/*-mac-*.dmg -nobrowse -readonly -mountpoint "$mount"
+          trap 'hdiutil detach "$mount"' EXIT
+          installed="$RUNNER_TEMP/elevenmd-installed"
+          mkdir -p "$installed"
+          ditto "$mount/ElevenMD.app" "$installed/ElevenMD.app"
+          codesign --verify --deep --strict "$installed/ElevenMD.app"
+          NOTEPAD_EXECUTABLE_PATH="$installed/ElevenMD.app/Contents/MacOS/ElevenMD" npm run test:packaging:smoke
+          printf '%s\n' 'macOS artifacts are ad-hoc signed, not Developer ID signed or notarized.' >> "$GITHUB_STEP_SUMMARY"
+      - name: Upload tested native assets
+        uses: actions/upload-artifact@v4
+        with:
+          name: ElevenMD-${{ matrix.platform }}-${{ matrix.arch }}
+          if-no-files-found: error
+          retention-days: 14
+          path: |
+            release/*-${{ matrix.platform }}-${{ matrix.arch }}.deb
+            release/*-${{ matrix.platform }}-${{ matrix.arch }}.dmg
+            release/*-${{ matrix.platform }}-${{ matrix.arch }}-portable.tar.gz
+            release/*-${{ matrix.platform }}-${{ matrix.arch }}-portable.zip
+            release/*-${{ matrix.platform }}-${{ matrix.arch }}-SHA256SUMS.txt
+
+  attach-to-release:
+    name: Attach tested native assets to existing release
+    needs: build
+    if: github.event_name == 'release' || (github.event_name == 'workflow_dispatch' && inputs.release_tag != '')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      RELEASE_TAG: ${{ inputs.release_tag || github.event.release.tag_name }}
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: ElevenMD-*
+          merge-multiple: true
+          path: assets
+      - name: Verify checksums and attach without overwriting existing assets
+        shell: bash
+        run: |
+          [[ "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]
+          (cd assets && for sums in *-SHA256SUMS.txt; do sha256sum -c "$sums"; done)
+          gh release view "$RELEASE_TAG" --repo "$GH_REPO"
+          gh release upload "$RELEASE_TAG" assets/* --repo "$GH_REPO"
+          # Read the exact release back; missing assets fail the job.
+          gh release view "$RELEASE_TAG" --repo "$GH_REPO" --json assets > release-assets.json
+          python3 -c 'import json,pathlib; names={a["name"] for a in json.load(open("release-assets.json"))["assets"]}; expected={p.name for p in pathlib.Path("assets").iterdir() if p.is_file()}; missing=expected-names; assert not missing, missing'

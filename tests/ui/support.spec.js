@@ -86,6 +86,17 @@ test('Settings owns privacy in keyboard-accessible tabs and fits a 640x440 windo
 })
 
 
+test('manual platform updates offer only the release page, never Windows installer actions', async ({ page }) => {
+  await desktop(page, { status: 'available', version: '0.4.0', manualDownload: true, notes: '# Native release' })
+  await page.getByRole('button', { name: 'Update available: 0.4.0' }).click()
+  await expect(page.locator('#download-update')).toBeHidden()
+  await expect(page.locator('#install-update')).toBeHidden()
+  await page.getByRole('button', { name: 'Download for your platform on GitHub' }).click()
+  expect(await page.evaluate(() => supportCalls.includes('release'))).toBe(true)
+  expect(await page.evaluate(() => supportCalls.some(x => x === 'download' || x === 'install'))).toBe(false)
+  await expect(page.getByRole('dialog')).toContainText('does not download or run installers')
+})
+
 test('startup only checks releases; user chooses download and installation after checkpoint', async ({ page }) => {
   await desktop(page)
   await expect(page.getByRole('button', { name: 'Update available: 0.4.0' })).toBeVisible()

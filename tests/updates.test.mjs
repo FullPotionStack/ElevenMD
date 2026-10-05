@@ -37,9 +37,29 @@ async function fixture(t, overrides = {}) {
   let module;
   try { module = require('../electron/updates.cjs'); }
   catch (error) { assert.fail(`Update service is not implemented: ${error.message}`); }
-  const service = module.createUpdateService({ version: '0.3.0', repository, downloadsDir, fetchImpl, ...overrides });
+  const service = module.createUpdateService({ version: '0.3.0', repository, downloadsDir, fetchImpl, platform: 'win32', ...overrides });
   return { service, calls, downloadsDir };
 }
+
+test('non-Windows updates expose only a trusted release page and never download or execute Windows assets', async t => {
+  for (const platform of ['linux', 'darwin', 'freebsd']) {
+    let hooks = 0;
+    const { service, calls, downloadsDir } = await fixture(t, {
+      platform, confirmInstall: async () => { hooks++; return true; },
+      beforeInstall: async () => { hooks++; }, launchInstaller: async () => { hooks++; },
+    });
+    assert.equal(service.getState().manualDownload, true);
+    assert.equal((await service.check()).status, 'available');
+    assert.equal(service.getState().releaseUrl, releaseURL);
+    await service.download(); await service.install();
+    assert.equal(hooks, 0);
+    assert.deepEqual(calls.map(call => call.url), [api]);
+    assert.deepEqual(await fs.readdir(downloadsDir), []);
+    const noWindowsAssets = await fixture(t, { platform, fetchImpl: async () => Response.json(release({ assets: [] })) });
+    assert.equal((await noWindowsAssets.service.check()).status, 'available');
+    assert.equal(noWindowsAssets.service.getState().releaseUrl, releaseURL);
+  }
+});
 
 test('automatically decoded gzip metadata uses streamed decoded bounds, not compressed Content-Length equality', async t => {
   const data = JSON.stringify(release());

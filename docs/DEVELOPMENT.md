@@ -1,8 +1,10 @@
 # ElevenMD — local development notes
 
-Windows-first alpha, version 0.3.4. A local-first Markdown and plain-text editor with formatted, source, and preview modes.
+Desktop alpha for Windows, Linux, and macOS, version 0.3.4. A local-first Markdown and plain-text editor with formatted, source, and preview modes.
 
 ## Run
+
+For Linux/macOS downloads, native build commands, and release attachment, see [native distributions](DISTRIBUTION.md). The Windows-specific installer details below apply only to Windows.
 
 Open `release/win-0.3.4-unpacked/ElevenMD.exe` for the portable build. For the installable version, run `release/ElevenMD-Setup-0.3.4.exe`. The installer creates Start menu shortcuts; a desktop shortcut is optional. It can add “Open with ElevenMD” to `.md` and `.txt` Explorer context menus and register ElevenMD as an available app for Markdown and text files. Those file/context-menu options are explicit installer choices. Windows protects the user's default-app choice, so the installer never silently takes over `.md` or `.txt`; select ElevenMD in Windows Settings → Default apps, or choose the optional installer task to open that page after installation.
 
@@ -33,7 +35,7 @@ The renderer can also be developed with `npm run dev`; a renderer preview in a b
 
 Formatted edits normalize Markdown. Opening or toggling a supported document does not itself replace its source with serialized output. Recognized front matter, raw HTML/comments, footnotes, math blocks, and directives open in source mode; formatted editing requires an explicit warning acknowledgment. This detection is conservative, not complete support for every Markdown dialect. Local PNG/JPEG/GIF/WebP/BMP/AVIF images resolve within the document directory. Insert image copies native-selected pictures into a sibling assets folder. SVG and parent-directory/absolute image references are not supported. HTTPS images require the remote-image preference. Web/mail links open only after confirmation; Ctrl+click follows a link while formatted editing. See MARKDOWN-FEATURES.md for dialect limits.
 
-Several native-editor behaviors are not yet included: printing, drag-and-drop opening, a recent-files list, configurable encodings, and a signed release. Linux/macOS portability is architectural only; neither platform has been tested. Session storage is durable local plaintext, not an external backup. It survives ordinary OS restarts, but no machine reboot/power-loss test has been performed. Session checkpoint failure leaves the window open with an error rather than silently losing text. Writes are checked immediately before rename but cannot eliminate every external-process race.
+Several native-editor behaviors are not yet included: printing, drag-and-drop opening, a recent-files list, configurable encodings, and a signed release. Native Linux/macOS builds and packaged-launch checks run in GitHub Actions; see [distribution details](DISTRIBUTION.md) for the platform matrix, manual update path, sandbox requirements, and macOS signing limits. Session storage is durable local plaintext, not an external backup. It survives ordinary OS restarts, but no machine reboot/power-loss test has been performed. Session checkpoint failure leaves the window open with an error rather than silently losing text. Writes are checked immediately before rename but cannot eliminate every external-process race.
 
 If a file changed outside the app, save your changes under a different name. To display the changed disk version, close its existing tab and reopen it; opening the same path while its tab is still present selects that tab.
 

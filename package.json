@@ -4,7 +4,7 @@
   "private": true,
   "license": "MIT",
   "repository": { "type": "git", "url": "https://github.com/FullPotionStack/ElevenMD.git" },
-  "description": "A local-first Markdown and plain-text editor for Windows",
+  "description": "A local-first Markdown and plain-text desktop editor",
   "type": "module",
   "main": "electron/main.cjs",
   "scripts": {
@@ -24,7 +24,13 @@
     "test:installer": "node tests/installer-lifecycle.mjs",
     "test:native": "node tests/desktop-native.mjs --packaged",
     "package:win": "npm run build && node scripts/package-windows.mjs",
-    "installer:win": "npm run package:win && node scripts/build-installer.mjs"
+    "installer:win": "npm run package:win && node scripts/build-installer.mjs",
+    "package:linux": "npm run build && node scripts/package-linux.mjs",
+    "installer:linux": "npm run package:linux",
+    "package:mac": "npm run build && node scripts/package-macos.mjs",
+    "installer:mac": "npm run package:mac",
+    "test:packaging": "node --test scripts/cross-platform/packaging.test.mjs",
+    "test:packaging:smoke": "node scripts/cross-platform/smoke.mjs"
   },
   "dependencies": {
     "@tiptap/core": "3.31.4",

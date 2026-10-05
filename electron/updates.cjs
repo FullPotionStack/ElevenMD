@@ -84,7 +84,7 @@ function plainNotes(value) {
  * Checksums establish release integrity, not authenticity independent of GitHub/repo trust.
  */
 function createUpdateService({ version, repository, downloadsDir, fetchImpl = globalThis.fetch,
-  requestTimeoutMs, downloadTimeoutMs, maxInstallerBytes, confirmInstall, beforeInstall, launchInstaller }) {
+  requestTimeoutMs, downloadTimeoutMs, maxInstallerBytes, confirmInstall, beforeInstall, launchInstaller, platform = process.platform }) {
   if (repository !== distribution.repository || !/^[A-Za-z0-9][A-Za-z0-9-]{0,38}\/[A-Za-z0-9][A-Za-z0-9._-]{0,99}$/.test(repository) || !/^[A-Za-z0-9][A-Za-z0-9._-]{0,99}$/.test(distribution.installerPrefix) || typeof version !== 'string' || version.length > 100 ||
       !STABLE.test(version) || /[\r\n]/.test(version) || typeof downloadsDir !== 'string' || !path.isAbsolute(downloadsDir) ||
       typeof fetchImpl !== 'function') throw new Error('Invalid update configuration.');
@@ -120,7 +120,7 @@ function createUpdateService({ version, repository, downloadsDir, fetchImpl = gl
     }
     throw new Error('Too many redirects');
   }
-  const empty = { currentVersion: version, version: null, releaseUrl: null, notes: '', error: null };
+  const empty = { currentVersion: version, version: null, releaseUrl: null, notes: '', error: null, manualDownload: platform !== 'win32' };
   let state = { ...empty, status: 'idle' }, candidate = null;
   const getState = () => ({ ...state });
   async function discardVerified() {
@@ -149,6 +149,11 @@ function createUpdateService({ version, repository, downloadsDir, fetchImpl = gl
         }
         return getState();
       }
+      if (empty.manualDownload) {
+        state = { ...empty, status: 'available', version: latest,
+          releaseUrl: `https://github.com/${repository}/releases/tag/${tag}`, notes: plainNotes(release.body) };
+        return getState();
+      }
       const name = `${distribution.installerPrefix}-${latest}.exe`;
       if (!Array.isArray(release.assets) || release.assets.length > 100) throw new Error('Invalid assets');
       const base = `https://github.com/${repository}/releases/download/${tag}/`;
@@ -169,6 +174,7 @@ function createUpdateService({ version, repository, downloadsDir, fetchImpl = gl
   }
   let verified = null;
   async function download() {
+    if (empty.manualDownload) return getState();
     if (verified && state.status === 'downloaded') return getState();
     state = { ...state, status: 'downloading', error: null };
     let directory, handle;
@@ -214,6 +220,7 @@ function createUpdateService({ version, repository, downloadsDir, fetchImpl = gl
   }
   let installed = false;
   async function install() {
+    if (empty.manualDownload) return getState();
     if (installed) return { ...getState(), installed: true };
     try {
       if (!verified || state.status !== 'downloaded' || typeof confirmInstall !== 'function' ||
