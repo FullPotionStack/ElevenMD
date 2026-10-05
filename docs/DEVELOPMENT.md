@@ -12,6 +12,7 @@ The app is unsigned. It has no account, document cloud service, AI integration, 
 
 ```sh
 npm ci
+npm run runtime:install
 npm run build
 npm start
 ```

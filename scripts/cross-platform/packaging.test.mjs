@@ -8,6 +8,13 @@ import os from 'node:os'
 const scratch = process.env.ELEVENMD_TEST_SCRATCH || process.env.TMPDIR || os.tmpdir()
 await mkdir(scratch, { recursive: true })
 
+test('clean native CI explicitly installs Electron binaries before packaging', async () => {
+  const pkg = JSON.parse(await readFile(new URL('../../package.json', import.meta.url), 'utf8'))
+  const workflow = await readFile(new URL('../../.github/workflows/native-distributions.yml', import.meta.url), 'utf8')
+  assert.equal(pkg.scripts['runtime:install'], 'install-electron')
+  assert.match(workflow, /npm ci\s+ npm run runtime:install/)
+})
+
 test('staging uses the Electron resources layout, carries notices, and never overwrites outputs', async t => {
   const { stageNative } = await import('./shared.mjs')
   const root = await mkdtemp(path.join(scratch, 'elevenmd-packaging-'))

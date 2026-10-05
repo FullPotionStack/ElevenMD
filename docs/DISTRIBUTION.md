@@ -1,6 +1,6 @@
 # Native distributions
 
-Build on the target operating system and architecture with Node.js 24, `npm ci`, and the relevant command:
+Build on the target operating system and architecture with Node.js 24, `npm ci`, `npm run runtime:install`, and the relevant command. Electron 44 exposes `install-electron` as an explicit binary installer; `npm ci` alone does not download the runtime:
 
 | Host | Command | Output in `release/` |
 | --- | --- | --- |

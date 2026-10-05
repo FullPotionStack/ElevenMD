@@ -55,6 +55,7 @@ Install Node.js 24 or later, then run these commands on the target operating sys
 git clone https://github.com/FullPotionStack/ElevenMD.git
 cd ElevenMD
 npm ci
+npm run runtime:install
 npm test
 npm run test:ui
 npm run build
