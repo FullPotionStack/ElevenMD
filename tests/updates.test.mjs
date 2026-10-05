@@ -41,6 +41,14 @@ async function fixture(t, overrides = {}) {
   return { service, calls, downloadsDir };
 }
 
+test('automatically decoded gzip metadata uses streamed decoded bounds, not compressed Content-Length equality', async t => {
+  const data = JSON.stringify(release());
+  const { service } = await fixture(t, { fetchImpl: async () => new Response(data, { headers: { 'Content-Encoding': 'gzip', 'Content-Length': '100' } }) });
+  assert.equal((await service.check()).status, 'available');
+  const oversized = await fixture(t, { fetchImpl: async () => new Response('x'.repeat(1048577), { headers: { 'Content-Encoding': 'gzip', 'Content-Length': '100' } }) });
+  assert.equal((await oversized.service.check()).status, 'error');
+});
+
 test('current stable release keeps inert notes and trusted URL without offering installation', async t => {
   const { service } = await fixture(t, { fetchImpl: async () => Response.json(release({ tag_name: 'v0.3.0', body: '# Changes\nFixed a bug.' })) });
   const state = await service.check();

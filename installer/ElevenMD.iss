@@ -2,6 +2,10 @@
   #error AppVersion must be supplied by build-installer.mjs
 #endif
 
+#ifndef InstallerPrefix
+  #error InstallerPrefix must be supplied by build-installer.mjs
+#endif
+
 #define AppName "ElevenMD"
 #define AppExe "ElevenMD.exe"
 #define AppId "{{6C0E4662-46BB-4C4A-B40C-6C11A157E911}}"
@@ -21,7 +25,7 @@ PrivilegesRequired=lowest
 ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
 OutputDir=..\release
-OutputBaseFilename=ElevenMD-Setup-{#AppVersion}
+OutputBaseFilename={#InstallerPrefix}-{#AppVersion}
 SetupIconFile=..\public\elevenmd.ico
 UninstallDisplayIcon={app}\{#AppExe}
 WizardStyle=modern

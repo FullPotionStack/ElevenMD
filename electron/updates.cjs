@@ -2,6 +2,7 @@
 const fs = require('node:fs/promises');
 const path = require('node:path');
 const { createHash } = require('node:crypto');
+const distribution = require('./distribution.cjs');
 const MAX_METADATA_BYTES = 1024 * 1024;
 function boundedOption(value, fallback) {
   if (value === undefined) return fallback;
@@ -35,7 +36,10 @@ async function readBounded(response, limit, context, onChunk) {
       const bytes = Buffer.from(value);
       if (onChunk) await onChunk(bytes); else chunks.push(bytes);
     }
-    if (length !== null && total !== Number(length)) throw new Error('Truncated response');
+    // Fetch transparently decodes gzip/br/etc.; Content-Length describes wire bytes.
+    // Decoded streaming bounds always apply. Exact length applies only to identity bodies.
+    const encoded = response.headers.get('content-encoding');
+    if ((!encoded || encoded === 'identity') && length !== null && total !== Number(length)) throw new Error('Truncated response');
     return onChunk ? total : Buffer.concat(chunks, total);
   } finally { void reader.cancel().catch(() => {}); }
 }
@@ -57,7 +61,7 @@ function plainNotes(value) {
 }
 /**
  * Main-process-only updater. Construction and check() never download or execute code.
- * Required: version (stable X.Y.Z), literal repository FullPotionStack/ElevenMD,
+ * Required: version (stable X.Y.Z), repository matching the build-owned distribution.cjs trust anchor,
  * downloadsDir (private app-owned absolute directory). fetchImpl defaults to Node fetch.
  * Optional lower-only bounds: requestTimeoutMs <= 15000, downloadTimeoutMs <= 120000,
  * maxInstallerBytes <= 256 MiB. Metadata <= 1 MiB, SHA256SUMS <= 128 KiB.
@@ -79,7 +83,7 @@ function plainNotes(value) {
  */
 function createUpdateService({ version, repository, downloadsDir, fetchImpl = globalThis.fetch,
   requestTimeoutMs, downloadTimeoutMs, maxInstallerBytes, confirmInstall, beforeInstall, launchInstaller }) {
-  if (repository !== 'FullPotionStack/ElevenMD' || typeof version !== 'string' || version.length > 100 ||
+  if (repository !== distribution.repository || !/^[A-Za-z0-9][A-Za-z0-9-]{0,38}\/[A-Za-z0-9][A-Za-z0-9._-]{0,99}$/.test(repository) || !/^[A-Za-z0-9][A-Za-z0-9._-]{0,99}$/.test(distribution.installerPrefix) || typeof version !== 'string' || version.length > 100 ||
       !STABLE.test(version) || /[\r\n]/.test(version) || typeof downloadsDir !== 'string' || !path.isAbsolute(downloadsDir) ||
       typeof fetchImpl !== 'function') throw new Error('Invalid update configuration.');
   const checkTimeout = boundedOption(requestTimeoutMs, 15000);
@@ -143,7 +147,7 @@ function createUpdateService({ version, repository, downloadsDir, fetchImpl = gl
         }
         return getState();
       }
-      const name = `ElevenMD-Setup-${latest}.exe`;
+      const name = `${distribution.installerPrefix}-${latest}.exe`;
       if (!Array.isArray(release.assets) || release.assets.length > 100) throw new Error('Invalid assets');
       const base = `https://github.com/${repository}/releases/download/${tag}/`;
       function asset(wanted, max) {

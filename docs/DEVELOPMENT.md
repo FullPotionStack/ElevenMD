@@ -1,10 +1,10 @@
 # ElevenMD — local development notes
 
-Windows-first alpha, version 0.3.0. A local-first Markdown and plain-text editor with formatted, source, and preview modes.
+Windows-first alpha, version 0.3.1. A local-first Markdown and plain-text editor with formatted, source, and preview modes.
 
 ## Run
 
-Open `release/win-0.3.0-unpacked/ElevenMD.exe` for the portable build. For the installable version, run `release/ElevenMD-Setup-0.3.0.exe`. The installer creates Start menu shortcuts; a desktop shortcut is optional. It can add “Open with ElevenMD” to `.md` and `.txt` Explorer context menus and register ElevenMD as an available app for Markdown and text files. Those file/context-menu options are explicit installer choices. Windows protects the user's default-app choice, so the installer never silently takes over `.md` or `.txt`; select ElevenMD in Windows Settings → Default apps, or choose the optional installer task to open that page after installation.
+Open `release/win-0.3.1-unpacked/ElevenMD.exe` for the portable build. For the installable version, run `release/ElevenMD-Setup-0.3.1.exe`. The installer creates Start menu shortcuts; a desktop shortcut is optional. It can add “Open with ElevenMD” to `.md` and `.txt` Explorer context menus and register ElevenMD as an available app for Markdown and text files. Those file/context-menu options are explicit installer choices. Windows protects the user's default-app choice, so the installer never silently takes over `.md` or `.txt`; select ElevenMD in Windows Settings → Default apps, or choose the optional installer task to open that page after installation.
 
 The app is unsigned. It has no account, document cloud service, AI integration, or automatic telemetry upload. Startup and manual update checks contact GitHub; download and installation require user approval. Diagnostics remain off until explicit consent and stay local unless the user shares a reviewed report or export. For source:
 

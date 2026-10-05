@@ -1,5 +1,12 @@
 # Changes
 
+## 0.3.1
+
+- Fixed real GitHub update checks: compressed HTTP response lengths are no longer compared with decoded JSON lengths. Decoded streaming bounds and installer SHA-256 checks remain enforced.
+- Added a single build-owned distribution configuration for update and bug-report repositories.
+- Fork packaging now refuses to use an upstream destination that differs from its GitHub origin. Forks must retarget their own release assets and reports.
+- Kept SVG line endings deterministic in fresh Windows checkouts.
+
 ## 0.3.0
 
 ### Fixed

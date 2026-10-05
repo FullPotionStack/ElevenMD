@@ -1,8 +1,8 @@
 # Writing-workflow QA
 
-## Release 0.3.0
+## Release 0.3.1
 
-The final local verification passed **88 unit tests and 86 Chromium UI tests**, including 40 writing-workflow scenarios. Packaged Windows checks passed for files, sessions, images, executable branding, diagnostics and the installer lifecycle. This is a bounded acceptance run, not a claim that every possible document or device works.
+The final local verification passed **92 unit tests and 86 Chromium UI tests**, including 40 writing-workflow scenarios. Packaged Windows checks passed for files, sessions, images, executable branding, diagnostics and the installer lifecycle. This is a bounded acceptance run, not a claim that every possible document or device works.
 
 Browser tests use real typing, selections, toolbar/menu commands, HTML dialogs, tabs and Preview DOM. They simulate native dialogs at the desktop bridge. Separate Electron tests exercise actual IPC and disk bytes. A desktop UI run used the real Windows Save and Save As dialogs and verified the resulting files. Tests use isolated profiles and synthetic documents only.
 

@@ -1,5 +1,5 @@
 'use strict';
-const REPOSITORY = 'FullPotionStack/ElevenMD';
+const { repository: REPOSITORY } = require('./distribution.cjs');
 function redactText(text) {
   return text
     .replace(/\b(?:gh[pousr]_[A-Za-z0-9_]{16,}|github_pat_[A-Za-z0-9_]{16,}|sk-[A-Za-z0-9_-]{16,})\b/g, '[redacted credential]')

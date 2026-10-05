@@ -1,6 +1,8 @@
 import { cp, mkdir, readFile, readdir, rename, writeFile, rm } from 'node:fs/promises'
 import path from 'node:path'
-import { spawnSync } from 'node:child_process'
+import { spawnSync, execFileSync } from 'node:child_process'
+import { createRequire } from 'node:module'
+import { validateDistribution } from './distribution-policy.mjs'
 import assert from 'node:assert/strict'
 import { brandWindowsExecutable } from './windows-branding.mjs'
 import { createBrandAssets } from './generate-brand-assets.mjs'
@@ -14,6 +16,10 @@ if (process.argv.includes('--test-branding')) {
   process.exit(result.status ?? 1)
 }
 if (process.argv.length > 2) throw new Error('Unknown packaging argument. Use --test-branding for scratch-only verification.')
+const distribution = createRequire(import.meta.url)('../electron/distribution.cjs')
+let origin
+try { origin = execFileSync('git', ['remote', 'get-url', 'origin'], { cwd: root, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim() } catch { throw new Error('Packaging requires a GitHub checkout with git origin. Forks must configure their own repository in electron/distribution.cjs.') }
+validateDistribution(distribution, origin)
 const assets = createBrandAssets()
 assert.equal(await readFile(path.join(root, 'public', 'elevenmd-mark.svg'), 'utf8'), assets.svg, 'SVG drift: run node scripts/generate-brand-assets.mjs')
 assert.deepEqual(await readFile(path.join(root, 'public', 'elevenmd.ico')), assets.ico, 'ICO drift: run node scripts/generate-brand-assets.mjs')
@@ -29,7 +35,7 @@ await rename(path.join(out, 'electron.exe'), path.join(out, 'ElevenMD.exe'))
 await brandWindowsExecutable(path.join(out, 'ElevenMD.exe'), path.join(root, 'public', 'elevenmd.ico'), pkg.version)
 await cp(path.join(root, 'examples'), path.join(out, 'examples'), { recursive: true })
 await mkdir(path.join(out, 'docs'), { recursive: true })
-for (const name of ['DEVELOPMENT.md', 'MARKDOWN-FEATURES.md', 'PRIVACY.md']) await cp(path.join(root, 'docs', name), path.join(out, 'docs', name))
+for (const name of ['DEVELOPMENT.md', 'MARKDOWN-FEATURES.md', 'PRIVACY.md', 'FORKING.md']) await cp(path.join(root, 'docs', name), path.join(out, 'docs', name))
 for (const name of ['README.md', 'CHANGELOG.md']) await cp(path.join(root, name), path.join(out, name))
 await cp(path.join(root, 'LICENSE'), path.join(out, 'ELEVENMD-LICENSE.txt'))
 await mkdir(app, { recursive: true })

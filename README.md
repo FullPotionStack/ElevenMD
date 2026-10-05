@@ -57,6 +57,14 @@ npm start
 
 `npm run package:win` produces the portable runtime. `npm run installer:win` builds a versioned installer. Set `ISCC_PATH` if the Inno compiler is outside its usual installation location. Packaging tools and notices are included in the build process.
 
+## Fork distribution requirements
+
+Before distributing a modified fork, you **MUST change the update and bug-report destination to your own repository** in `electron/distribution.cjs`. Do not ship a fork that checks `FullPotionStack/ElevenMD` for updates or sends its reports here. Set `installerPrefix` to your own installer asset prefix, and publish a matching `<prefix>-<version>.exe` plus `SHA256SUMS`.
+
+Windows packaging refuses a distribution whose configured repository does not match its GitHub `origin`. This is a build safeguard against accidental upstream targeting, not a restriction added to the MIT license. Deliberately removing the safeguard cannot be prevented by open-source code.
+
+Also use your own Windows installer AppId, product name, ProgIDs, and session-storage identity so your fork does not replace the official installation or share private drafts. Update your README/release links and `package.json` repository metadata. See [forking instructions](docs/FORKING.md).
+
 ## Known limits
 
 The app supports UTF-8 (including BOM) and LF/CRLF line endings, with a 10 MiB document limit. Local raster images must stay within the document directory; SVG and absolute/parent-directory image paths are unsupported. Remote images require an opt-in preference. Web/mail links require confirmation before opening outside the app.
