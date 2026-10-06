@@ -18,7 +18,7 @@ Download **0.3.4** directly below; you do not need Node.js or a source build to 
 
 On Windows, run the installer or extract the entire ZIP and open `ElevenMD.exe`. On macOS, open the DMG and drag `ElevenMD.app` to Applications, or extract the ZIP. On Debian/Ubuntu, install the DEB with `sudo apt install ./<downloaded-file>.deb`.
 
-**Fedora users:** choose the Linux portable tar.gz for your processor. The DEB is not a Fedora installer; there is no RPM package in this release. Extract the entire archive, open a terminal in the extracted directory, and run `./elevenmd` as your normal user, not with `sudo`. It still needs Electron's system libraries and a working sandbox; if launch fails, keep the terminal error rather than disabling the sandbox. Fedora verification is in progress.
+**Fedora users:** choose the Linux portable tar.gz for your processor. The DEB is not a Fedora installer; there is no RPM package in this release. Extract the entire archive, open a terminal in the extracted directory, and run `./elevenmd` as your normal user, not with `sudo`. It still needs Electron's system libraries and a working sandbox; if launch fails, keep the terminal error rather than disabling the sandbox. Fedora 43 x64 source builds and newly packaged portable launches passed the [Node 22/24 CI check](https://github.com/FullPotionStack/ElevenMD/actions/runs/37413556029). That check uses a Fedora container on Ubuntu's kernel; it does not certify Fedora desktop SELinux or GPU behavior. See [Fedora setup](docs/DISTRIBUTION.md#fedora-source-setup-and-reproduction).
 
 Portable means you do not need an installer; it does not put drafts and preferences beside the executable. The app stores them in your platform's per-user application data directory. Keep the whole Linux/Windows runtime directory together.
 
@@ -55,9 +55,17 @@ Optional diagnostics are **off until you consent**. If enabled, they keep the la
 
 ## Build from source
 
-Use the downloads above unless you want to develop the app. For a source checkout, use Node.js 24 LTS; Vite requires Node.js 22.12 or newer on the 22.x line. Changing between Node 22 and 24 will not fix missing Linux libraries, an absent Electron runtime, or a missing test browser.
+Use the downloads above unless you want to develop the app. A source checkout requires **Node.js 22.12.0 or newer**; Node.js 24 LTS is recommended. Fedora 43 x64 CI passed with Node 22.23.3 and 24.21.0. Changing Node versions will not fix missing Linux libraries, an absent Electron runtime, or a missing test browser.
 
-Run these commands on the target operating system:
+On Fedora, install the runtime libraries first:
+
+```sh
+sudo dnf install -y nss nspr atk at-spi2-atk cups-libs libdrm dbus-libs \
+  libX11 libxcb libXcomposite libXdamage libXext libXfixes libXrandr \
+  mesa-libgbm libxkbcommon pango cairo alsa-lib gtk3 xdg-utils liberation-fonts
+```
+
+Run these commands on the target operating system as a regular user:
 
 ```sh
 git clone https://github.com/FullPotionStack/ElevenMD.git
@@ -73,11 +81,12 @@ npm start
 Tests are separate from building and running. Browser tests also require a downloaded Playwright browser:
 
 ```sh
+npm test
 npx playwright install chromium
 npm run test:ui
 ```
 
-Linux test browsers need system libraries as well. Playwright's `install --with-deps` uses supported Debian/Ubuntu dependency installation, not Fedora's DNF. The full legacy `npm test` suite still contains Windows-specific fixtures while Linux test portability is being fixed; do not treat a test-fixture failure as a compiler error.
+Linux test browsers need system libraries as well. Playwright's `install --with-deps` uses supported Debian/Ubuntu dependency installation, not Fedora's DNF. The full unit suite now works on Linux/macOS without Windows-only scratch paths; OS-specific PE-resource tests run only on Windows. See [Fedora verification and limits](docs/DISTRIBUTION.md#fedora-source-setup-and-reproduction).
 
 Package on a native machine matching the desired architecture:
 
