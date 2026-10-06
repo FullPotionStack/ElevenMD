@@ -6,13 +6,19 @@ Write Markdown and plain text in a desktop app for Windows, Linux, and macOS. Ed
 
 ## Install
 
-Choose your operating system and processor from [Releases](https://github.com/FullPotionStack/ElevenMD/releases/latest). `x64` is Intel/AMD 64-bit; `arm64` is ARM 64-bit, including Apple silicon. ElevenMD is an alpha without publisher-certified releases.
+Download **0.3.4** directly below; you do not need Node.js or a source build to use these downloads. `x64` is Intel/AMD 64-bit; `arm64` is ARM 64-bit, including Apple silicon. ElevenMD is an alpha without publisher-certified releases. [Release notes and checksums](https://github.com/FullPotionStack/ElevenMD/releases/tag/v0.3.4).
 
-| Platform | Installer | Portable | How to run |
-| --- | --- | --- | --- |
-| Windows x64 | `ElevenMD-Setup-0.3.4.exe` | `ElevenMD-0.3.4-windows-x64-portable.zip` | Run the installer, or extract the entire ZIP and open `ElevenMD.exe`. |
-| Linux x64 / arm64 | `ElevenMD-0.3.4-linux-<arch>.deb` | `ElevenMD-0.3.4-linux-<arch>-portable.tar.gz` | Install with `sudo apt install ./<filename>.deb`, or extract the archive and run `./elevenmd` inside its directory as a regular user. |
-| macOS x64 / arm64 | `ElevenMD-0.3.4-mac-<arch>.dmg` | `ElevenMD-0.3.4-mac-<arch>-portable.zip` | Open the DMG and drag `ElevenMD.app` to Applications, or extract the ZIP and move the app where you prefer. |
+| Your computer | Installer | Portable (no installation) |
+| --- | --- | --- |
+| Windows, Intel/AMD | [Download EXE](https://github.com/FullPotionStack/ElevenMD/releases/download/v0.3.4/ElevenMD-Setup-0.3.4.exe) | [Download ZIP](https://github.com/FullPotionStack/ElevenMD/releases/download/v0.3.4/ElevenMD-0.3.4-windows-x64-portable.zip) |
+| Linux, Intel/AMD | [Download DEB](https://github.com/FullPotionStack/ElevenMD/releases/download/v0.3.4/ElevenMD-0.3.4-linux-x64.deb), Debian/Ubuntu only | [Download tar.gz](https://github.com/FullPotionStack/ElevenMD/releases/download/v0.3.4/ElevenMD-0.3.4-linux-x64-portable.tar.gz) |
+| Linux, ARM64 | [Download DEB](https://github.com/FullPotionStack/ElevenMD/releases/download/v0.3.4/ElevenMD-0.3.4-linux-arm64.deb), Debian/Ubuntu only | [Download tar.gz](https://github.com/FullPotionStack/ElevenMD/releases/download/v0.3.4/ElevenMD-0.3.4-linux-arm64-portable.tar.gz) |
+| macOS, Intel | [Download DMG](https://github.com/FullPotionStack/ElevenMD/releases/download/v0.3.4/ElevenMD-0.3.4-mac-x64.dmg) | [Download ZIP](https://github.com/FullPotionStack/ElevenMD/releases/download/v0.3.4/ElevenMD-0.3.4-mac-x64-portable.zip) |
+| macOS, Apple silicon (M-series) | [Download DMG](https://github.com/FullPotionStack/ElevenMD/releases/download/v0.3.4/ElevenMD-0.3.4-mac-arm64.dmg) | [Download ZIP](https://github.com/FullPotionStack/ElevenMD/releases/download/v0.3.4/ElevenMD-0.3.4-mac-arm64-portable.zip) |
+
+On Windows, run the installer or extract the entire ZIP and open `ElevenMD.exe`. On macOS, open the DMG and drag `ElevenMD.app` to Applications, or extract the ZIP. On Debian/Ubuntu, install the DEB with `sudo apt install ./<downloaded-file>.deb`.
+
+**Fedora users:** choose the Linux portable tar.gz for your processor. The DEB is not a Fedora installer; there is no RPM package in this release. Extract the entire archive, open a terminal in the extracted directory, and run `./elevenmd` as your normal user, not with `sudo`. It still needs Electron's system libraries and a working sandbox; if launch fails, keep the terminal error rather than disabling the sandbox. Fedora verification is in progress.
 
 Portable means you do not need an installer; it does not put drafts and preferences beside the executable. The app stores them in your platform's per-user application data directory. Keep the whole Linux/Windows runtime directory together.
 
@@ -49,20 +55,31 @@ Optional diagnostics are **off until you consent**. If enabled, they keep the la
 
 ## Build from source
 
-Install Node.js 24 or later, then run these commands on the target operating system:
+Use the downloads above unless you want to develop the app. For a source checkout, use Node.js 24 LTS; Vite requires Node.js 22.12 or newer on the 22.x line. Changing between Node 22 and 24 will not fix missing Linux libraries, an absent Electron runtime, or a missing test browser.
+
+Run these commands on the target operating system:
 
 ```sh
 git clone https://github.com/FullPotionStack/ElevenMD.git
 cd ElevenMD
 npm ci
 npm run runtime:install
-npm test
-npm run test:ui
 npm run build
 npm start
 ```
 
-The full legacy unit suite includes Windows-specific tests; native CI runs a selected platform-neutral lane plus packaging and packaged-launch tests. Package on a native machine matching the desired architecture:
+`npm run runtime:install` downloads Electron explicitly; `npm ci` alone does not install its executable. Run `npm start` in a graphical desktop session as a regular user. Linux needs Electron's shared libraries and a working Chromium sandbox.
+
+Tests are separate from building and running. Browser tests also require a downloaded Playwright browser:
+
+```sh
+npx playwright install chromium
+npm run test:ui
+```
+
+Linux test browsers need system libraries as well. Playwright's `install --with-deps` uses supported Debian/Ubuntu dependency installation, not Fedora's DNF. The full legacy `npm test` suite still contains Windows-specific fixtures while Linux test portability is being fixed; do not treat a test-fixture failure as a compiler error.
+
+Package on a native machine matching the desired architecture:
 
 | Target | Command | Additional tools |
 | --- | --- | --- |
