@@ -2,14 +2,12 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 import path from 'node:path';
+import { testScratch } from './helpers/electron-harness.mjs';
 import { randomUUID } from 'node:crypto';
 import { createRequire } from 'node:module';
 const require = createRequire(import.meta.url);
 // Some runners reset TMPDIR to Windows Temp. Keep fixtures in Hermes scratch regardless.
-const scratch = process.env.HERMES_TEST_SCRATCH || (process.platform === 'win32'
-  ? path.join(process.env.LOCALAPPDATA, 'hermes', 'cache', 'scratch')
-  : process.env.TMPDIR);
-assert.ok(scratch, 'A test scratch directory is required');
+const scratch = await testScratch();
 async function fixture(t) {
   await fs.mkdir(scratch, { recursive: true });
   const dir = await fs.mkdtemp(path.join(scratch, 'notepad-files-'));
@@ -195,7 +193,7 @@ function fakeElectron() {
   app.requestSingleInstanceLock = () => true;
   app.whenReady = async () => {};
   app.getAppPath = () => path.resolve('.');
-  app.getPath = () => path.join(process.env.LOCALAPPDATA, 'hermes', 'cache', 'scratch', `notepad-fake-${randomUUID()}`);
+  app.getPath = () => path.join(scratch, `notepad-fake-${randomUUID()}`);
   app.quit = () => { app.quitting = true; };
   const session = {
     webRequest: { onBeforeRequest(_filter, cb) { session.request = cb; }, onHeadersReceived(_filter, cb) { session.headers = cb; } },
@@ -255,7 +253,9 @@ test('caption colors follow the rendered system theme rather than an overridden 
   fake.electron.BrowserWindow.prototype.setTitleBarOverlay = function(value) { this.overlay = value; };
   await require('../electron/main.cjs').startDesktop(fake.electron, { argv: [], env: {} });
   await fake.invoke('preferences', { theme: 'system', effectiveTheme: 'light', spellcheck: false, remoteImages: false });
-  assert.equal(fake.electron.BrowserWindow.last.overlay.color, '#211f29');
+  const overlay = fake.electron.BrowserWindow.last.overlay;
+  if (process.platform === 'darwin') assert.equal(overlay, undefined, 'macOS uses native traffic lights, not a caption overlay');
+  else assert.equal(overlay.color, '#211f29');
 });
 test('desktop shell uses native chrome and blocks navigation, windows, network, permissions, and webviews', async () => {
   let main;
@@ -265,7 +265,8 @@ test('desktop shell uses native chrome and blocks navigation, windows, network, 
   const win = fake.electron.BrowserWindow.last;
   assert.equal(win.options.title, 'ElevenMD');
   assert.equal(win.options.titleBarStyle, 'hidden');
-  assert.equal(win.options.titleBarOverlay.height, 46);
+  if (process.platform === 'darwin') assert.equal(win.options.titleBarOverlay, undefined);
+  else assert.equal(win.options.titleBarOverlay.height, 46);
   assert.match(win.options.icon, /dist[\\/]elevenmd\.ico$/);
   assert.equal(win.options.backgroundColor, '#fffaf2');
   assert.equal(win.options.webPreferences.spellcheck, true);

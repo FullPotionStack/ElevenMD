@@ -2,12 +2,11 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 import path from 'node:path';
+import { testScratch } from './helpers/electron-harness.mjs';
 import { createHash } from 'node:crypto';
 import { createRequire } from 'node:module';
 const require = createRequire(import.meta.url);
-const scratch = process.env.HERMES_TEST_SCRATCH || (process.platform === 'win32'
-  ? path.join(process.env.LOCALAPPDATA, 'hermes', 'cache', 'scratch') : process.env.TMPDIR);
-assert.ok(scratch, 'A test scratch directory is required');
+const scratch = await testScratch();
 const repository = 'FullPotionStack/ElevenMD';
 const api = `https://api.github.com/repos/${repository}/releases/latest`;
 const releaseURL = `https://github.com/${repository}/releases/tag/v0.4.0`;

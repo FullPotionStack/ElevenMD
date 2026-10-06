@@ -2,13 +2,12 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 import path from 'node:path';
+import { testScratch } from './helpers/electron-harness.mjs';
 import { randomUUID } from 'node:crypto';
 import { createRequire } from 'node:module';
 import { crc32, inflateSync } from 'node:zlib';
 const require = createRequire(import.meta.url);
-const scratch = process.env.HERMES_TEST_SCRATCH || (process.platform === 'win32'
-  ? path.join(process.env.LOCALAPPDATA, 'hermes', 'cache', 'scratch') : process.env.TMPDIR);
-assert.ok(scratch, 'A test scratch directory is required');
+const scratch = await testScratch();
 const PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+ip1sAAAAASUVORK5CYII=', 'base64');
 async function fixture(t) {
   await fs.mkdir(scratch, { recursive: true });

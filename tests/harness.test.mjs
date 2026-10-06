@@ -1,5 +1,30 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
+import path from 'node:path'
+import { mkdtemp, rm } from 'node:fs/promises'
+
+test('test scratch honors an explicit isolated directory before platform defaults', async t => {
+  const { testScratch } = await import('./helpers/electron-harness.mjs')
+  const parent = await testScratch()
+  const dir = await mkdtemp(path.join(parent, 'scratch-override-'))
+  t.after(() => rm(dir, { recursive: true, force: true }))
+  const previous = process.env.HERMES_TEST_SCRATCH
+  try {
+    process.env.HERMES_TEST_SCRATCH = dir
+    assert.equal(await testScratch(), dir)
+  } finally {
+    if (previous === undefined) delete process.env.HERMES_TEST_SCRATCH
+    else process.env.HERMES_TEST_SCRATCH = previous
+  }
+})
+
+test('test scratch works on Unix with no Windows or TMPDIR environment', async t => {
+  const { testScratch } = await import('./helpers/electron-harness.mjs')
+  const parent = await testScratch()
+  const dir = await mkdtemp(path.join(parent, 'scratch-unix-'))
+  t.after(() => rm(dir, { recursive: true, force: true }))
+  assert.equal(await testScratch({ env: {}, platform: 'linux', tempDirectory: dir }), dir)
+})
 
 test('packaged tests select the source version build or an explicit extracted executable', async () => {
   const { packagedExecutable } = await import('./helpers/electron-harness.mjs')

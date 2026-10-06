@@ -93,10 +93,8 @@ jobs:
           npm run runtime:install
       - name: Packaging unit and fixture tests
         run: npm run test:packaging
-      - name: Platform-neutral application unit tests
-        # The full legacy suite assumes LOCALAPPDATA and Windows titleBarOverlay.
-        # Keep those tests unchanged; packaging and actual native launches run below.
-        run: node --test tests/brand-assets.test.mjs tests/harness.test.mjs tests/images.test.mjs tests/source-history.test.mjs tests/updates.test.mjs
+      - name: Full application unit suite
+        run: npm test
       - name: Build native distributions
         shell: bash
         run: npm run "package:${TARGET_PLATFORM}"

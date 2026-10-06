@@ -1,4 +1,5 @@
 import path from 'node:path'
+import os from 'node:os'
 import { mkdir } from 'node:fs/promises'
 import { execFile } from 'node:child_process'
 import { promisify } from 'node:util'
@@ -9,11 +10,10 @@ export function packagedExecutable() {
   return process.env.NOTEPAD_EXECUTABLE_PATH || path.resolve(`release/win-${pkg.version}-unpacked/ElevenMD.exe`)
 }
 
-export async function testScratch() {
-  const base = process.platform === 'win32'
-    ? path.join(process.env.LOCALAPPDATA, 'hermes', 'cache', 'scratch')
-    : process.env.TMPDIR
-  if (!base) throw new Error('An explicit test scratch directory is required.')
+export async function testScratch({ env = process.env, platform = process.platform, tempDirectory = os.tmpdir() } = {}) {
+  const base = env.HERMES_TEST_SCRATCH || (platform === 'win32' && env.LOCALAPPDATA
+    ? path.join(env.LOCALAPPDATA, 'hermes', 'cache', 'scratch')
+    : env.TMPDIR || tempDirectory)
   await mkdir(base, { recursive: true })
   return base
 }

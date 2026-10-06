@@ -2,6 +2,7 @@
   "name": "eleven-md",
   "version": "0.3.4",
   "private": true,
+  "engines": { "node": ">=22.12.0" },
   "license": "MIT",
   "repository": { "type": "git", "url": "https://github.com/FullPotionStack/ElevenMD.git" },
   "description": "A local-first Markdown and plain-text desktop editor",

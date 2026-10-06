@@ -2,10 +2,11 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { mkdtemp, writeFile, readFile, rm } from 'node:fs/promises'
 import path from 'node:path'
+import { testScratch } from './helpers/electron-harness.mjs'
 import { createRequire } from 'node:module'
 import { randomUUID } from 'node:crypto'
 const require = createRequire(import.meta.url)
-const scratch = path.join(process.env.LOCALAPPDATA, 'hermes', 'cache', 'scratch')
+const scratch = await testScratch()
 
 test('private session keeps unnamed and edited file tabs without writing originals', async t => {
   const dir = await mkdtemp(path.join(scratch, 'notepad-session-test-')); t.after(() => rm(dir, { recursive: true, force: true }))

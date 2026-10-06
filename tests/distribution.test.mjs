@@ -1,5 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
+import { testScratch } from './helpers/electron-harness.mjs'
 import { validateDistribution } from '../scripts/distribution-policy.mjs'
 
 test('official and correctly retargeted forks match their own git origin', () => {
@@ -9,7 +10,7 @@ test('official and correctly retargeted forks match their own git origin', () =>
 test('retargeted distribution makes the real update module use only the fork repository', async t => {
   const fs = await import('node:fs/promises'), path = await import('node:path')
   const { createRequire } = await import('node:module')
-  const dir = await fs.mkdtemp(path.join(process.env.LOCALAPPDATA, 'hermes', 'cache', 'scratch', 'elevenmd-fork-'))
+  const dir = await fs.mkdtemp(path.join(await testScratch(), 'elevenmd-fork-'))
   t.after(() => fs.rm(dir, { recursive: true, force: true }))
   for (const file of ['updates.cjs']) await fs.copyFile(new URL(`../electron/${file}`, import.meta.url), path.join(dir, file))
   await fs.writeFile(path.join(dir, 'distribution.cjs'), "module.exports = Object.freeze({repository: 'ExampleOwner/MyFork', installerPrefix: 'MyFork-Setup'});\n")

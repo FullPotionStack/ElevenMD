@@ -36,8 +36,7 @@ npx playwright install chromium 2>&1 | tee /logs/browser-install.txt
 npm run test:ui 2>&1 | tee /logs/ui.txt || failed=1
 npm run build 2>&1 | tee /logs/build.txt
 # Source native launch uses the full desktop integration harness, isolated userData.
-# Existing helper currently requires TMPDIR; record that until its portability fix.
-TMPDIR="$HERMES_TEST_SCRATCH" xvfb-run -a npm run test:desktop 2>&1 | tee /logs/source-launch.txt || failed=1
+xvfb-run -a npm run test:desktop 2>&1 | tee /logs/source-launch.txt || failed=1
 npm run package:linux 2>&1 | tee /logs/package.txt
 (cd release && sha256sum -c *-linux-*-SHA256SUMS.txt)
 mkdir -p "$HERMES_TEST_SCRATCH/extracted"

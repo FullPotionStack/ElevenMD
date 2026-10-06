@@ -2,9 +2,10 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { mkdtemp, readFile, writeFile, rm, stat, readdir } from 'node:fs/promises'
 import path from 'node:path'
+import { testScratch } from './helpers/electron-harness.mjs'
 import { createRequire } from 'node:module'
 const require = createRequire(import.meta.url)
-const scratch = path.join(process.env.LOCALAPPDATA, 'hermes', 'cache', 'scratch')
+const scratch = await testScratch()
 const modulePath = '../electron/diagnostics.cjs'
 async function fixture(t, options = {}) {
   const dir = await mkdtemp(path.join(scratch, 'notepad-diagnostics-'))
