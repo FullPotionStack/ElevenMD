@@ -1,0 +1,43 @@
+name: Fedora source build
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['tests/**', 'scripts/**', 'package*.json', 'src/**', 'electron/**', 'public/**', 'vite.config.*', 'playwright.config.*', '.github/workflows/fedora-source.yml']
+  pull_request:
+    paths: ['tests/**', 'scripts/**', 'package*.json', 'src/**', 'electron/**', 'public/**', 'vite.config.*', 'playwright.config.*', '.github/workflows/fedora-source.yml']
+permissions:
+  contents: read
+jobs:
+  fedora:
+    name: Fedora 43 / Node ${{ matrix.node }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        node: ['22.23.3', '24.21.0']
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Allow nested sandbox on disposable Docker host
+        run: sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+      - name: Reproduce source build in Fedora (not Ubuntu libraries)
+        shell: bash
+        run: |
+          mkdir -p "$RUNNER_TEMP/fedora-logs"
+          # SYS_ADMIN + unconfined seccomp permit Chromium's nested namespace sandbox.
+          # Only this disposable container receives them; app sandbox stays enabled.
+          docker run --rm --cap-add=SYS_ADMIN --security-opt seccomp=unconfined \
+            -e NODE_VERSION='${{ matrix.node }}' \
+            -v "$GITHUB_WORKSPACE:/checkout:ro" \
+            -v "$RUNNER_TEMP/fedora-logs:/logs" \
+            fedora:43 bash /checkout/scripts/ci/fedora.sh
+      - name: Upload reproduction logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: Fedora43-Node${{ matrix.node }}-logs
+          path: ${{ runner.temp }}/fedora-logs
+          if-no-files-found: warn
