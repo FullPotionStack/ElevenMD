@@ -17,7 +17,7 @@ Every build carries application, dependency, Electron, and Chromium notices. mac
 `.github/workflows/native-distributions.yml` builds on Ubuntu 24.04 x64/arm64 and macOS 15 Intel/Apple silicon runners. Each lane runs packaging fixtures, the full application unit suite, native packaging, checksum verification, and actual packaged launches of both distribution formats. Linux installs the Debian package on the disposable runner and extracts the tar.gz; macOS extracts the ZIP and copies the app from a mounted DMG into runner scratch. All smoke launches use isolated per-test application data.
 
 ```sh
-gh workflow run native-distributions.yml --ref main -f release_tag=v0.3.4
+gh workflow run native-distributions.yml --ref main -f release_tag=v0.3.5
 ```
 
 A manual release dispatch builds the immutable commit selected by `main`, not the old release tag. `release_tag` must exactly equal `v` plus `package.json` version, and attachment dispatches must use main. The workflow does not move or rewrite the existing tag. The build source SHA is recorded in the job summary. This permits adding native assets to a release whose original tag predates native packaging. Source changes and platform-specific updater guards are therefore in the recorded main commit, not necessarily in the original tag or existing Windows binary.
@@ -70,9 +70,9 @@ The smoke test proves native packaged startup, version and architecture, rendere
 Verify downloaded files using their matching manifest from the same release, for example inside the directory containing the artifacts:
 
 ```sh
-sha256sum -c ElevenMD-0.3.4-linux-x64-SHA256SUMS.txt
+sha256sum -c ElevenMD-0.3.5-linux-x64-SHA256SUMS.txt
 # macOS:
-shasum -a 256 -c ElevenMD-0.3.4-mac-arm64-SHA256SUMS.txt
+shasum -a 256 -c ElevenMD-0.3.5-mac-arm64-SHA256SUMS.txt
 ```
 
 A published checksum detects mismatched bytes; it does not authenticate a compromised repository independently.

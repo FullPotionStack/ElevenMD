@@ -6,15 +6,15 @@ Write Markdown and plain text in a desktop app for Windows, Linux, and macOS. Ed
 
 ## Install
 
-Download **0.3.4** directly below; you do not need Node.js or a source build to use these downloads. `x64` is Intel/AMD 64-bit; `arm64` is ARM 64-bit, including Apple silicon. ElevenMD is an alpha without publisher-certified releases. [Release notes and checksums](https://github.com/FullPotionStack/ElevenMD/releases/tag/v0.3.4).
+Download **0.3.5** directly below; you do not need Node.js or a source build to use these downloads. `x64` is Intel/AMD 64-bit; `arm64` is ARM 64-bit, including Apple silicon. ElevenMD is an alpha without publisher-certified releases. [Release notes and checksums](https://github.com/FullPotionStack/ElevenMD/releases/tag/v0.3.5).
 
 | Your computer | Installer | Portable (no installation) |
 | --- | --- | --- |
-| Windows, Intel/AMD | [Download EXE](https://github.com/FullPotionStack/ElevenMD/releases/download/v0.3.4/ElevenMD-Setup-0.3.4.exe) | [Download ZIP](https://github.com/FullPotionStack/ElevenMD/releases/download/v0.3.4/ElevenMD-0.3.4-windows-x64-portable.zip) |
-| Linux, Intel/AMD | [Download DEB](https://github.com/FullPotionStack/ElevenMD/releases/download/v0.3.4/ElevenMD-0.3.4-linux-x64.deb), Debian/Ubuntu only | [Download tar.gz](https://github.com/FullPotionStack/ElevenMD/releases/download/v0.3.4/ElevenMD-0.3.4-linux-x64-portable.tar.gz) |
-| Linux, ARM64 | [Download DEB](https://github.com/FullPotionStack/ElevenMD/releases/download/v0.3.4/ElevenMD-0.3.4-linux-arm64.deb), Debian/Ubuntu only | [Download tar.gz](https://github.com/FullPotionStack/ElevenMD/releases/download/v0.3.4/ElevenMD-0.3.4-linux-arm64-portable.tar.gz) |
-| macOS, Intel | [Download DMG](https://github.com/FullPotionStack/ElevenMD/releases/download/v0.3.4/ElevenMD-0.3.4-mac-x64.dmg) | [Download ZIP](https://github.com/FullPotionStack/ElevenMD/releases/download/v0.3.4/ElevenMD-0.3.4-mac-x64-portable.zip) |
-| macOS, Apple silicon (M-series) | [Download DMG](https://github.com/FullPotionStack/ElevenMD/releases/download/v0.3.4/ElevenMD-0.3.4-mac-arm64.dmg) | [Download ZIP](https://github.com/FullPotionStack/ElevenMD/releases/download/v0.3.4/ElevenMD-0.3.4-mac-arm64-portable.zip) |
+| Windows, Intel/AMD | [Download EXE](https://github.com/FullPotionStack/ElevenMD/releases/download/v0.3.5/ElevenMD-Setup-0.3.5.exe) | [Download ZIP](https://github.com/FullPotionStack/ElevenMD/releases/download/v0.3.5/ElevenMD-0.3.5-windows-x64-portable.zip) |
+| Linux, Intel/AMD | [Download DEB](https://github.com/FullPotionStack/ElevenMD/releases/download/v0.3.5/ElevenMD-0.3.5-linux-x64.deb), Debian/Ubuntu only | [Download tar.gz](https://github.com/FullPotionStack/ElevenMD/releases/download/v0.3.5/ElevenMD-0.3.5-linux-x64-portable.tar.gz) |
+| Linux, ARM64 | [Download DEB](https://github.com/FullPotionStack/ElevenMD/releases/download/v0.3.5/ElevenMD-0.3.5-linux-arm64.deb), Debian/Ubuntu only | [Download tar.gz](https://github.com/FullPotionStack/ElevenMD/releases/download/v0.3.5/ElevenMD-0.3.5-linux-arm64-portable.tar.gz) |
+| macOS, Intel | [Download DMG](https://github.com/FullPotionStack/ElevenMD/releases/download/v0.3.5/ElevenMD-0.3.5-mac-x64.dmg) | [Download ZIP](https://github.com/FullPotionStack/ElevenMD/releases/download/v0.3.5/ElevenMD-0.3.5-mac-x64-portable.zip) |
+| macOS, Apple silicon (M-series) | [Download DMG](https://github.com/FullPotionStack/ElevenMD/releases/download/v0.3.5/ElevenMD-0.3.5-mac-arm64.dmg) | [Download ZIP](https://github.com/FullPotionStack/ElevenMD/releases/download/v0.3.5/ElevenMD-0.3.5-mac-arm64-portable.zip) |
 
 On Windows, run the installer or extract the entire ZIP and open `ElevenMD.exe`. On macOS, open the DMG and drag `ElevenMD.app` to Applications, or extract the ZIP. On Debian/Ubuntu, install the DEB with `sudo apt install ./<downloaded-file>.deb`.
 

@@ -1,5 +1,11 @@
 # Changes
 
+## 0.3.5
+
+- Settings now shows only the app name and version, without the extra slogan.
+- Fixed the standalone preferences test to open the Editor tab before testing spell check.
+- Windows native save tests now complete real Save and Save As dialogs, verify cancellation closes the dialog, and save again afterward. They check exact saved bytes and preservation of unsaved text.
+
 ## 0.3.4
 
 - Removed in-app bug reporting and its browser/IPC entry points. Unfinished email reporting is preserved on a local development branch only.

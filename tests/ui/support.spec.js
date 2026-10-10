@@ -49,6 +49,7 @@ test('Settings owns privacy in keyboard-accessible tabs and fits a 640x440 windo
   for (const theme of ['light', 'dark']) {
     await page.getByRole('combobox', { name: 'Quick theme' }).selectOption(theme)
     await page.getByRole('button', { name: 'Settings', exact: true }).click()
+    await expect(page.locator('#settings-appearance .muted')).toHaveText(/^ElevenMD · \d+\.\d+\.\d+ alpha$/)
     const tabs = page.getByRole('tablist', { name: 'Settings sections' })
     await expect(tabs.getByRole('tab')).toHaveText(['Appearance', 'Editor', 'Privacy & diagnostics', 'Updates'])
     await tabs.getByRole('tab', { name: 'Appearance', exact: true }).focus()
