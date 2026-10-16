@@ -1,5 +1,11 @@
 # Changes
 
+## 0.3.8
+
+- Includes last-tab exit and persistent tab colors from the local 0.3.7 build.
+- Settings now reads the app version from the package manifest instead of a hard-coded label.
+- 0.3.7 was not published as a downloadable release; final installation verification caught its stale Settings version label.
+
 ## 0.3.7
 
 - Closing the last document tab now closes the app instead of creating a replacement tab. Unsaved tabs retain Save/Discard/Cancel protection; dismissed tabs are not restored on restart.

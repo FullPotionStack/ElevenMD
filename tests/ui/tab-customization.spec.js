@@ -1,4 +1,12 @@
 import { test, expect } from '@playwright/test'
+import { readFileSync } from 'node:fs'
+const { version } = JSON.parse(readFileSync(new URL('../../package.json', import.meta.url), 'utf8'))
+
+test('Settings caption matches the package version', async ({ page }) => {
+  await page.goto('/')
+  await page.getByRole('button', { name: 'Settings', exact: true }).click()
+  await expect(page.locator('#settings-appearance .muted')).toHaveText(`ElevenMD · ${version} alpha`)
+})
 
 async function desktop(page, answer = 'discard') {
   await page.addInitScript(answer => {
