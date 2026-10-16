@@ -16,10 +16,12 @@ test('packaging brands the copied PE before reporting success and has a scratch-
 
 test('installer and update launcher never close unrelated apps or request an OS restart', async () => {
   const installer = await readFile(installerSource, 'utf8')
-  const launcher = await readFile(new URL('../electron/support.cjs', import.meta.url), 'utf8')
+  const launcher = await readFile(new URL('../electron/update-launcher.cjs', import.meta.url), 'utf8')
+  const support = await readFile(new URL('../electron/support.cjs', import.meta.url), 'utf8')
   assert.match(installer, /^CloseApplications=no$/m)
   assert.match(installer, /^RestartApplications=no$/m)
-  assert.match(launcher, /const args = \['\/UPDATE', '\/NOCLOSEAPPLICATIONS', '\/NORESTART'\]/)
+  for (const flag of ['/UPDATE', '/NOCLOSEAPPLICATIONS', '/NORESTART', '/NORESTARTAPPLICATIONS']) assert.ok(launcher.includes(`'${flag}'`))
+  assert.match(support, /launchInstaller: createUpdateLauncher\(\{ execPath: process\.execPath, parentPid: process\.pid, isPackaged: app\.isPackaged \}\)/)
   assert.doesNotMatch(installer, /CloseApplications=force/)
 })
 

@@ -182,4 +182,6 @@ dialog textarea { background: var(--paper); color: var(--fg); border: 1px solid 
 #update-status { color: var(--accent); font-weight: 600; }
 footer { height: auto; min-height: 30px; flex-wrap: wrap; }
 button:disabled { opacity: .55; cursor: wait; }
+#update-progress { width: 100%; height: 14px; accent-color: var(--accent); }
+#update-progress-text { color: var(--muted); font-size: 12px; }
 @media(max-width: 700px) { .app-name { display: none; } }

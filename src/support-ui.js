@@ -12,10 +12,35 @@ export function setupSupport({ api, checkpoint, showMenu, toast, openSettings })
     if (owns(heading) && $('#diagnostics-status')) $('#diagnostics-status').textContent = privacyText()
     toast(`Could not ${action} diagnostics. Logs were not confirmed cleared; collection may be disabled. Review Settings → Privacy & diagnostics.`)
   }
+  function downloadPercent() {
+    const { received, total } = update.progress || {}
+    return Number.isSafeInteger(received) && Number.isSafeInteger(total) && total > 0 && received >= 0 && received <= total ? Math.floor(received * 100 / total) : null
+  }
+  function progress() {
+    if (!owns(updateHeading)) return
+    const bar = $('#update-progress'), text = $('#update-progress-text')
+    const running = ['downloading', 'verifying', 'installing'].includes(update.status)
+    bar.hidden = text.hidden = !running
+    const percent = downloadPercent()
+    if (update.status === 'downloading' && percent !== null) {
+      bar.max = update.progress.total; bar.value = update.progress.received
+      text.textContent = `Downloading update… ${percent}%`
+    } else {
+      bar.removeAttribute('value')
+      text.textContent = update.status === 'verifying' ? 'Verifying update…' : update.status === 'installing' ? 'Preparing update and restart…' : 'Preparing download…'
+    }
+    if (running) $('#update-description').textContent = update.status === 'verifying' ? 'Verifying the update…' : update.status === 'installing' ? 'Preparing update and restart…' : 'Downloading the update…'
+    $('#check-updates').disabled = busy
+  }
   function status() {
-    const button = $('#update-status')
-    button.hidden = !['available', 'downloaded', 'downloading', 'checking', 'error'].includes(update.status)
-    button.textContent = update.status === 'downloaded' ? `Update ready: ${update.version}` : update.status === 'available' ? `Update available: ${update.version}` : update.status === 'checking' ? 'Checking updates…' : update.status === 'downloading' ? 'Downloading update…' : 'Update check unavailable'
+    const button = $('#update-status'), percent = downloadPercent()
+    button.hidden = !['available', 'downloaded', 'downloading', 'verifying', 'installing', 'checking', 'error'].includes(update.status)
+    button.textContent = update.status === 'downloaded' ? `Update ready: ${update.version}` : update.status === 'available' ? `Update available: ${update.version}` : update.status === 'checking' ? 'Checking updates…' : update.status === 'verifying' ? 'Verifying update…' : update.status === 'installing' ? 'Preparing update…' : update.status === 'downloading' ? `Downloading update…${percent === null ? '' : ` ${percent}%`}` : 'Update check unavailable'
+    progress()
+  }
+  function onAction(action) {
+    if (action?.type !== 'update-progress') return
+    update = action.state; status()
   }
   async function check(manual = false) {
     if (!api?.checkUpdates) return toast('Update checks are available in the desktop app.')
@@ -27,9 +52,9 @@ export function setupSupport({ api, checkpoint, showMenu, toast, openSettings })
   }
   function updates(target) {
     if (!target) return openSettings('updates')
-    target.innerHTML = `<h3>Updates</h3><p id="update-description"></p><div id="release-notes" class="release-notes" role="region" aria-label="Release notes" tabindex="0"></div><div class="support-actions"><button id="check-updates">Check updates</button><button id="release-page">Release notes on GitHub</button><button id="download-update" class="primary" hidden>Download update</button><button id="install-update" class="primary" hidden>Install and restart</button></div><p class="small muted">Checking contacts GitHub. Downloads and installation only happen when you choose them. Installing checkpoints your tabs first; it does not save over your document files.</p>`
+    target.innerHTML = `<h3>Updates</h3><p id="update-description"></p><progress id="update-progress" aria-label="Update progress" hidden></progress><p id="update-progress-text" role="status" hidden></p><div id="release-notes" class="release-notes" role="region" aria-label="Release notes" tabindex="0"></div><div class="support-actions"><button id="check-updates">Check updates</button><button id="release-page">Release notes on GitHub</button><button id="download-update" class="primary" hidden>Download update</button><button id="install-update" class="primary" hidden>Install and restart</button></div><p class="small muted">Checking contacts GitHub. Downloads and installation only happen when you choose them. Installing checkpoints your tabs first, shows update progress without a setup wizard, and reopens this copy. Portable copies stay portable. Your document files are not overwritten.</p>`
     updateHeading = target.querySelector('h3')
-    $('#update-description').textContent = update.status === 'available' ? `Version ${update.version} is available.` : update.status === 'downloaded' ? `Version ${update.version} is downloaded and verified.` : update.status === 'current' ? 'You are up to date.' : update.status === 'error' ? update.error || 'Could not check for updates. Try again when you are online.' : update.status === 'unpublished' ? 'There are no published releases yet.' : update.status === 'checking' ? 'Checking GitHub for a newer release…' : update.status === 'downloading' ? 'Downloading and verifying the installer…' : 'Check GitHub for a newer release.'
+    $('#update-description').textContent = update.status === 'available' ? `Version ${update.version} is available.` : update.status === 'downloaded' ? `Version ${update.version} is downloaded and verified.` : update.status === 'current' ? 'You are up to date.' : update.status === 'error' ? update.error || 'Could not check for updates. Try again when you are online.' : update.status === 'unpublished' ? 'There are no published releases yet.' : update.status === 'checking' ? 'Checking GitHub for a newer release…' : update.status === 'downloading' ? 'Downloading the verified update…' : update.status === 'verifying' ? 'Verifying the update…' : update.status === 'installing' ? 'Preparing update and restart…' : 'Check GitHub for a newer release.'
     if (update.manualDownload) {
       $('#release-page').textContent = 'Download for your platform on GitHub'
       target.querySelector('.small.muted').textContent = 'Checking contacts GitHub. On Linux and macOS, choose the matching installer or portable archive on the release page, then install it yourself after closing the app. This app does not download or run installers on these platforms.'
@@ -37,6 +62,7 @@ export function setupSupport({ api, checkpoint, showMenu, toast, openSettings })
     $('#release-notes').innerHTML = renderReleaseNotes(update.notes || 'Release notes appear here when an update is available.')
     $('#download-update').hidden = update.manualDownload === true || update.status !== 'available'
     $('#install-update').hidden = update.manualDownload === true || update.status !== 'downloaded'
+    $('#check-updates').disabled = busy
     $('#check-updates').onclick = () => check(true)
     $('#release-page').onclick = () => api?.openRelease?.().catch(() => toast('Could not open the release page.'))
     $('#download-update').onclick = async () => {
@@ -46,10 +72,11 @@ export function setupSupport({ api, checkpoint, showMenu, toast, openSettings })
         busy = false; status(); if (owns(updateHeading)) updates(updateHeading.parentElement)
       }
     }
+    progress()
     $('#install-update').onclick = async () => {
       if (busy) return
-      busy = true; $('#install-update').disabled = true
-      try { await checkpoint(); const result = await api.installUpdate(); if (result) update = result } catch { toast('Could not start the update. Your tabs stay open.') } finally {
+      busy = true; $('#install-update').disabled = true; update.status = 'installing'; status()
+      try { await checkpoint(); const result = await api.installUpdate(); if (result) update = result } catch { update.status = 'downloaded'; toast('Could not start the update. Your tabs stay open.') } finally {
         busy = false; status(); if (owns(updateHeading)) updates(updateHeading.parentElement)
       }
     }
@@ -90,5 +117,5 @@ export function setupSupport({ api, checkpoint, showMenu, toast, openSettings })
     status()
     if (diagnostics.storageError) toast(privacyText())
     if (api?.checkUpdates) await check()
-  }, privacy, updates }
+  }, privacy, updates, onAction }
 }

@@ -75,12 +75,12 @@ function select(id) {
   if (active()) active().editorState = editor.state
   activeId = id; const doc = active()
   source.value = doc.content
-  if (mode === 'preview') { renderPreview(); update(); return }
+  if (mode === 'preview') { setMode('preview'); update(); return }
   if (mode === 'source') { setMode('source'); update(); return }
   if (needsSource(doc.content) && !doc.allowConversion) { setMode('source'); update(); return }
   if (doc.editorState && doc.richContent === doc.content) editor.view.updateState(doc.editorState)
   else loadRich(doc)
-  toolbarState(); update()
+  setMode('formatted'); toolbarState(); update()
 }
 function loadRich(doc) {
   editor.commands.setContent(doc.content, { contentType: 'markdown', emitUpdate: false })
@@ -213,6 +213,13 @@ $('#source-mode').onclick = () => setMode('source')
 $('#formatted').onclick = () => setMode('formatted')
 $('#preview-mode').onclick = () => setMode('preview')
 $('#new-tab').onclick = newDoc
+$('#tablist').addEventListener('wheel', event => {
+  const tabs = event.currentTarget
+  if (event.ctrlKey || Math.abs(event.deltaX) >= Math.abs(event.deltaY) || tabs.scrollWidth <= tabs.clientWidth) return
+  event.preventDefault()
+  const unit = event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? tabs.clientWidth : 1
+  tabs.scrollLeft += event.deltaY * unit
+}, { passive: false })
 let zoom = 100
 let prefs = { theme: 'system', font: 'Georgia', size: 16, wrap: true, spellcheck: false, remoteImages: false }
 try { prefs = { ...prefs, ...JSON.parse(localStorage.getItem('notepad-preferences') || '{}') } } catch { /* Invalid stored preferences use defaults. */ }
@@ -242,7 +249,7 @@ function settings(section = 'appearance') {
   modal.dataset.support = 'settings'
   const sections = [['appearance', 'Appearance'], ['editor', 'Editor'], ['privacy', 'Privacy & diagnostics'], ['updates', 'Updates']]
   modal.innerHTML = `<h2>Settings</h2><div class="settings-tabs" role="tablist" aria-label="Settings sections">${sections.map(([id, name]) => `<button id="settings-tab-${id}" role="tab" aria-controls="settings-${id}" aria-selected="false" tabindex="-1">${name}</button>`).join('')}</div>
-    <section id="settings-appearance" role="tabpanel" aria-labelledby="settings-tab-appearance" tabindex="0" hidden><h3>Appearance</h3><label>App theme<select id="theme" aria-label="App theme"><option value="system">Use system setting</option><option value="light">Light</option><option value="dark">Dark</option></select></label><p class="muted small">ElevenMD · 0.3.5 alpha</p></section>
+    <section id="settings-appearance" role="tabpanel" aria-labelledby="settings-tab-appearance" tabindex="0" hidden><h3>Appearance</h3><label>App theme<select id="theme" aria-label="App theme"><option value="system">Use system setting</option><option value="light">Light</option><option value="dark">Dark</option></select></label><p class="muted small">ElevenMD · 0.3.6 alpha</p></section>
     <section id="settings-editor" role="tabpanel" aria-labelledby="settings-tab-editor" tabindex="0" hidden><h3>Editor</h3><label>Editor font<select id="font" aria-label="Editor font"><option value="Georgia">Georgia</option><option value="Consolas">Consolas</option></select></label><label>Text size<select id="text-size" aria-label="Text size"><option>14</option><option>16</option><option>18</option><option>20</option><option>24</option></select></label><label class="check-label"><input type="checkbox" id="wrap">Wrap Markdown source lines</label><label class="check-label"><input type="checkbox" id="spellcheck">Spell check</label><p class="muted small">Closing the app keeps every tab automatically. Only Save writes to your document file.</p><label class="stacked">Session storage<input id="session-location" aria-label="Session storage" readonly></label></section>
     <section id="settings-privacy" role="tabpanel" aria-labelledby="settings-tab-privacy" tabindex="0" hidden><h3>Privacy & diagnostics</h3><label class="check-label"><input type="checkbox" id="remote-images">Load remote images</label><p class="muted small">Remote images contact their hosting websites only when enabled.</p><div id="settings-diagnostics"></div></section>
     <section id="settings-updates" role="tabpanel" aria-labelledby="settings-tab-updates" tabindex="0" hidden><div id="settings-update-tools"></div></section>
@@ -489,6 +496,7 @@ async function bootstrap() {
   sessionReady = true; update()
 }
 if (api) api.onAction(action => {
+  support.onAction(action)
   if (action === 'close-window') closeWindow()
   if (action?.type === 'diagnostics-error') toast('Diagnostics storage failed; collection is disabled. Old disk logs may remain. Review Settings → Privacy & diagnostics before restarting.')
   if (action?.type === 'opened') booting.then(() => addFiles(action.files))

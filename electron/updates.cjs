@@ -84,7 +84,7 @@ function plainNotes(value) {
  * Checksums establish release integrity, not authenticity independent of GitHub/repo trust.
  */
 function createUpdateService({ version, repository, downloadsDir, fetchImpl = globalThis.fetch,
-  requestTimeoutMs, downloadTimeoutMs, maxInstallerBytes, confirmInstall, beforeInstall, launchInstaller, platform = process.platform }) {
+  requestTimeoutMs, downloadTimeoutMs, maxInstallerBytes, confirmInstall, beforeInstall, launchInstaller, onState, platform = process.platform }) {
   if (repository !== distribution.repository || !/^[A-Za-z0-9][A-Za-z0-9-]{0,38}\/[A-Za-z0-9][A-Za-z0-9._-]{0,99}$/.test(repository) || !/^[A-Za-z0-9][A-Za-z0-9._-]{0,99}$/.test(distribution.installerPrefix) || typeof version !== 'string' || version.length > 100 ||
       !STABLE.test(version) || /[\r\n]/.test(version) || typeof downloadsDir !== 'string' || !path.isAbsolute(downloadsDir) ||
       typeof fetchImpl !== 'function') throw new Error('Invalid update configuration.');
@@ -120,16 +120,20 @@ function createUpdateService({ version, repository, downloadsDir, fetchImpl = gl
     }
     throw new Error('Too many redirects');
   }
-  const empty = { currentVersion: version, version: null, releaseUrl: null, notes: '', error: null, manualDownload: platform !== 'win32' };
+  const empty = { currentVersion: version, version: null, releaseUrl: null, notes: '', error: null, progress: null, manualDownload: platform !== 'win32' };
   let state = { ...empty, status: 'idle' }, candidate = null;
-  const getState = () => ({ ...state });
+  const getState = () => ({ ...state, progress: state.progress ? { ...state.progress } : null });
+  function publish() {
+    // Notifications are observation-only; a disconnected window cannot break verification.
+    try { onState?.(getState()); } catch { /* The caller may already be closing. */ }
+  }
   async function discardVerified() {
     const previous = verified;
     verified = null; installed = false;
     if (previous) await fs.rm(previous.directory, { recursive: true, force: true });
   }
   async function check() {
-    state = { ...empty, status: 'checking' }; candidate = null;
+    state = { ...empty, status: 'checking' }; candidate = null; publish();
     try {
       await discardVerified();
       const release = await withDeadline(checkTimeout, async context => {
@@ -176,7 +180,7 @@ function createUpdateService({ version, repository, downloadsDir, fetchImpl = gl
   async function download() {
     if (empty.manualDownload) return getState();
     if (verified && state.status === 'downloaded') return getState();
-    state = { ...state, status: 'downloading', error: null };
+    state = { ...state, status: 'downloading', error: null, progress: null }; publish();
     let directory, handle;
     try {
       await discardVerified();
@@ -199,19 +203,25 @@ function createUpdateService({ version, repository, downloadsDir, fetchImpl = gl
         const filename = path.join(directory, candidate.installer.name);
         handle = await fs.open(filename, 'wx', 0o600);
         const hash = createHash('sha256');
+        state.progress = { received: 0, total: candidate.installer.size }; publish();
+        let percent = -1;
         const exe = await request(candidate.installer.url, context);
         const total = await readBounded(exe, candidate.installer.size, context, async bytes => {
           hash.update(bytes); await handle.writeFile(bytes);
+          state.progress.received += bytes.length;
+          const next = Math.floor(state.progress.received * 100 / state.progress.total);
+          if (next !== percent) { percent = next; publish(); }
         });
+        state.status = 'verifying'; publish();
         if (total !== candidate.installer.size || hash.digest('hex') !== expected) throw new Error('Checksum mismatch');
         await handle.sync(); await handle.close(); handle = null;
         context.signal.throwIfAborted();
         verified = { filename, directory, hash: expected, size: total };
       });
-      state.status = 'downloaded';
+      state.status = 'downloaded'; publish();
     } catch {
       verified = null;
-      state = { ...state, status: 'error', error: 'Unable to download a verified update. Please try again later.' };
+      state = { ...state, status: 'error', progress: null, error: 'Unable to download a verified update. Please try again later.' }; publish();
     } finally {
       if (handle) await handle.close().catch(() => {});
       if (!verified && directory) await fs.rm(directory, { recursive: true, force: true }).catch(() => {});

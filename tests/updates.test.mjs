@@ -40,6 +40,32 @@ async function fixture(t, overrides = {}) {
   return { service, calls, downloadsDir };
 }
 
+test('download emits bounded real byte progress before verification and resets on a fresh check', async t => {
+  const states = [];
+  const { service } = await fixture(t, {
+    onState: state => { states.push(structuredClone(state)); },
+    fetchImpl: async url => {
+      if (url === api) return Response.json(release());
+      if (url === baseURL + 'SHA256SUMS') return new Response(`${digest(installer)}  ${installerName}\n`);
+      return new Response(new ReadableStream({ start(controller) {
+        for (const byte of installer) controller.enqueue(Uint8Array.of(byte));
+        controller.close();
+      } }));
+    },
+  });
+  await service.check(); await service.download();
+  const progress = states.filter(state => state.status === 'downloading' && state.progress?.received > 0);
+  assert.ok(progress.length > 1, 'streaming progress is observable before the download returns');
+  assert.ok(progress.some(state => state.progress.received < installer.length));
+  assert.ok(progress.every(state => state.progress.total === installer.length && state.progress.received <= state.progress.total));
+  assert.deepEqual(states.find(state => state.status === 'verifying').progress, { received: installer.length, total: installer.length });
+  assert.equal(states.at(-1).status, 'downloaded');
+  assert.doesNotMatch(JSON.stringify(states), /\.exe|downloadsDir|sha256/i);
+  const copy = service.getState(); copy.progress.received = -1;
+  assert.equal(service.getState().progress.received, installer.length);
+  await service.check(); assert.equal(service.getState().progress, null);
+});
+
 test('non-Windows updates expose only a trusted release page and never download or execute Windows assets', async t => {
   for (const platform of ['linux', 'darwin', 'freebsd']) {
     let hooks = 0;

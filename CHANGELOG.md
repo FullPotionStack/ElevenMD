@@ -1,5 +1,13 @@
 # Changes
 
+## 0.3.6
+
+- Fixed blank documents after restoring a session in Preview mode. The visible panel and selected mode now stay synchronized when switching tabs and opening files.
+- The mouse wheel scrolls an overflowing document tab strip horizontally without changing the active tab.
+- Windows updates show download percentage and verification status, then installation progress without the setup wizard. The app reopens with its writing session restored.
+- Windows portable copies update in their current folder without adding shortcuts, file associations, or uninstall entries. Unwritable folders are rejected before the app closes, and update failures remain visible.
+- The improved updater applies after installing 0.3.6. Older installed copies may show the setup wizard once during this transition. For an older portable copy, close the app and replace its runtime using the new portable archive; do not run a normal installation over it.
+
 ## 0.3.5
 
 - Settings now shows only the app name and version, without the extra slogan.

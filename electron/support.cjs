@@ -1,7 +1,7 @@
 'use strict';
 const fs = require('node:fs/promises');
 const path = require('node:path');
-const { spawn } = require('node:child_process');
+const { createUpdateLauncher } = require('./update-launcher.cjs');
 const { createUpdateService } = require('./updates.cjs');
 const { createDiagnosticsService } = require('./diagnostics.cjs');
 const { repository: REPOSITORY } = require('./distribution.cjs');
@@ -18,22 +18,17 @@ async function setupSupport({ electron, window, handle, userData, version, check
   });
   await record({ type: 'lifecycle', action: 'startup' });
   const updates = createUpdateService({ version, repository: REPOSITORY, downloadsDir: path.join(userData, 'updates'),
+    onState: state => {
+      if (!window.isDestroyed()) window.webContents.send('notepad:action', { type: 'update-progress', state });
+    },
     confirmInstall: async update => {
       const result = await dialog.showMessageBox(window, { type: 'question', title: 'Update ElevenMD', message: `Install ElevenMD ${update.version}?`,
-        detail: 'Your tabs have been checkpointed. ElevenMD will close and the verified release installer will open. Continue through the installer to restart the app. Your document files will not be overwritten.',
+        detail: 'Your tabs will be checkpointed before ElevenMD closes. The updater will show progress, update this copy in its current folder, and reopen it without a setup wizard. Portable copies stay portable. Your document files will not be overwritten.',
         buttons: ['Install and restart', 'Cancel'], defaultId: 1, cancelId: 1, noLink: true });
       return result.response === 0;
     },
     beforeInstall: async () => { if (typeof checkpoint !== 'function') throw new Error('Checkpoint unavailable.'); await checkpoint(); },
-    launchInstaller: async filename => {
-      // Keep upgrades in an installed app's own directory; portable users get a normal install.
-      const args = ['/UPDATE', '/NOCLOSEAPPLICATIONS', '/NORESTART'];
-      if (app.isPackaged && await fs.stat(path.join(path.dirname(process.execPath), 'unins000.exe')).then(s => s.isFile(), () => false)) args.push(`/DIR=${path.dirname(process.execPath)}`);
-      await new Promise((resolve, reject) => {
-        const child = spawn(filename, args, { shell: false, detached: true, stdio: 'ignore' });
-        child.once('error', reject); child.once('spawn', () => { child.unref(); resolve(); });
-      });
-    },
+    launchInstaller: createUpdateLauncher({ execPath: process.execPath, parentPid: process.pid, isPackaged: app.isPackaged }),
   });
   const zero = (name, callback) => handle(name, (...args) => {
     if (args.some(value => value !== undefined)) throw new Error('Invalid arguments.');
