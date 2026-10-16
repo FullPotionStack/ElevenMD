@@ -8,7 +8,7 @@ function validate(payload) {
   if (!payload || Object.keys(payload).some(k => !['tabs', 'activeId', 'mode'].includes(k)) || !Array.isArray(payload.tabs) || payload.tabs.length > 200 || !['formatted', 'source', 'preview'].includes(payload.mode)) throw new Error('Invalid session.');
   const ids = new Set();
   for (const tab of payload.tabs) {
-    if (!tab || Object.keys(tab).some(k => !['id', 'name', 'content', 'savedContent', 'eol', 'bom'].includes(k)) || !UUID.test(tab.id) || ids.has(tab.id) || typeof tab.name !== 'string' || !tab.name || tab.name.length > 255 || /[\u0000-\u001f]/.test(tab.name) || typeof tab.content !== 'string' || tab.content.includes('\0') || (tab.savedContent !== null && typeof tab.savedContent !== 'string') || !['LF', 'CRLF'].includes(tab.eol) || typeof tab.bom !== 'boolean') throw new Error('Invalid session tab.');
+    if (!tab || Object.keys(tab).some(k => !['id', 'name', 'content', 'savedContent', 'eol', 'bom', 'color'].includes(k)) || (tab.color !== undefined && tab.color !== null && (typeof tab.color !== 'string' || !/^#[0-9a-f]{6}$/i.test(tab.color))) || !UUID.test(tab.id) || ids.has(tab.id) || typeof tab.name !== 'string' || !tab.name || tab.name.length > 255 || /[\u0000-\u001f]/.test(tab.name) || typeof tab.content !== 'string' || tab.content.includes('\0') || (tab.savedContent !== null && typeof tab.savedContent !== 'string') || !['LF', 'CRLF'].includes(tab.eol) || typeof tab.bom !== 'boolean') throw new Error('Invalid session tab.');
     if (Buffer.byteLength(tab.content, 'utf8') > 10 * 1024 * 1024) throw new Error('Session document exceeds 10 MiB.');
     ids.add(tab.id);
   }

@@ -52,7 +52,15 @@ function update() {
     const dot = document.createElement('span'); dot.className = 'dirty-dot'; dot.textContent = dirty(doc) ? '●' : ''; dot.setAttribute('aria-hidden', 'true')
     button.append(name, dot); button.onclick = () => select(doc.id)
     const close = document.createElement('button'); close.className = 'close-tab'; close.setAttribute('aria-label', `Close ${doc.name}`); close.textContent = '×'; close.onclick = () => closeDoc(doc.id)
-    container.append(button, close); tablist.append(container)
+    button.title += '\nRight-click to change tab color'
+    const colorPicker = event => { event.preventDefault(); tabColor(doc) }
+    container.oncontextmenu = colorPicker
+    button.onkeydown = event => { if (event.key === 'ContextMenu' || event.shiftKey && event.key === 'F10') colorPicker(event) }
+    container.append(button, close)
+    if (/^#[0-9a-f]{6}$/i.test(doc.color)) {
+      const strip = document.createElement('span'); strip.className = 'tab-color-strip'; strip.style.backgroundColor = doc.color; strip.setAttribute('aria-hidden', 'true'); container.append(strip)
+    }
+    tablist.append(container)
   }
   const doc = active(); if (!doc) return
   $('#file-status').textContent = doc.recovered && !doc.path ? 'Recovered draft · Save as…' : dirty(doc) ? 'Unsaved changes' : doc.path ? 'Saved' : 'New document'
@@ -63,8 +71,21 @@ function update() {
   if (!api?.saveSession) try { localStorage.setItem('notepad-drafts', JSON.stringify(docs.filter(dirty).map(d => ({ name: d.name, content: d.content, eol: d.eol, bom: d.bom })))) } catch { toast('Draft recovery storage is full or unavailable. Save your file to keep your changes.') }
   if (sessionReady) { clearTimeout(autosaveTimer); autosaveTimer = setTimeout(() => checkpointSession().catch(error => toast(`Could not keep session: ${error.message}`)), 150) }
 }
+function tabColor(doc) {
+  modal.innerHTML = `<h2>Tab color</h2><p>Choose a color for this tab’s bottom strip.</p><div class="tab-color-palette"></div><label>Custom color<input id="tab-custom-color" type="color" aria-label="Custom color"></label><div class="dialog-actions"><button id="tab-color-cancel">Cancel</button><button id="tab-color-apply" class="primary">Apply</button></div>`
+  const apply = color => { if (docs.includes(doc)) { doc.color = color; update() }; modal.close() }
+  for (const [name, color] of [['No color', null], ['Red', '#f87171'], ['Orange', '#fb923c'], ['Yellow', '#facc15'], ['Green', '#4ade80'], ['Blue', '#60a5fa'], ['Purple', '#c084fc'], ['Pink', '#f472b6']]) {
+    const button = document.createElement('button'); button.textContent = name; button.onclick = () => apply(color)
+    const swatch = document.createElement('span'); swatch.className = 'tab-color-swatch'; swatch.style.backgroundColor = color || 'transparent'; swatch.setAttribute('aria-hidden', 'true'); button.prepend(swatch)
+    $('.tab-color-palette').append(button)
+  }
+  $('#tab-custom-color').value = /^#[0-9a-f]{6}$/i.test(doc.color) ? doc.color : '#60a5fa'
+  $('#tab-color-cancel').onclick = () => modal.close()
+  $('#tab-color-apply').onclick = () => apply($('#tab-custom-color').value)
+  modal.showModal()
+}
 function sessionSnapshot() {
-  return { tabs: docs.map(d => ({ id: d.id, name: d.name, content: d.content, savedContent: d.savedContent, eol: d.eol || 'LF', bom: !!d.bom })), activeId, mode }
+  return { tabs: docs.map(d => ({ id: d.id, name: d.name, content: d.content, savedContent: d.savedContent, eol: d.eol || 'LF', bom: !!d.bom, color: /^#[0-9a-f]{6}$/i.test(d.color) ? d.color : null })), activeId: docs.length ? activeId : null, mode }
 }
 function checkpointSession() {
   const snapshot = sessionSnapshot()
@@ -130,7 +151,19 @@ async function closeDoc(id) {
   if (!await canClose(doc)) { record({ type: 'document_close', outcome: 'cancelled' }); return }
   record({ type: 'document_close', outcome: 'success' })
   const index = docs.indexOf(doc); docs.splice(index, 1)
-  if (!docs.length) newDoc()
+  if (!docs.length) {
+    clearTimeout(autosaveTimer)
+    try {
+      await checkpointSession()
+      if (!api?.saveSession) localStorage.removeItem('notepad-drafts')
+      closingWindow = true
+      await api?.closeWindow()
+      $('#tablist').replaceChildren()
+    } catch (error) {
+      closingWindow = false; docs.push(doc); select(doc.id)
+      toast(`Could not close the last tab: ${error.message}`)
+    }
+  }
   else if (activeId === id) select(docs[Math.min(index, docs.length - 1)].id)
   else update()
 }

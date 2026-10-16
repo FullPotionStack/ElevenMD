@@ -1,5 +1,10 @@
 # Changes
 
+## 0.3.7
+
+- Closing the last document tab now closes the app instead of creating a replacement tab. Unsaved tabs retain Save/Discard/Cancel protection; dismissed tabs are not restored on restart.
+- Right-click a document tab (or press Shift+F10 on it) to choose a color for its thin bottom strip. Includes preset colors, custom colors, and No color; tab colors are remembered with the session.
+
 ## 0.3.6
 
 - Fixed blank documents after restoring a session in Preview mode. The visible panel and selected mode now stay synchronized when switching tabs and opening files.

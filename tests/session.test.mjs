@@ -31,6 +31,22 @@ test('private session keeps unnamed and edited file tabs without writing origina
   await restoredFiles.save({ id: opened.id, content: restored.tabs[0].content, saveAs: false })
   assert.equal(await readFile(target, 'utf8'), '# Edited, not saved\n')
 })
+test('tab colors round-trip while legacy sessions and empty final-tab checkpoints remain valid', async t => {
+  const dir = await mkdtemp(path.join(scratch, 'notepad-colors-')); t.after(() => rm(dir, { recursive: true, force: true }))
+  const files = require('../electron/files.cjs').createDocumentService()
+  const service = require('../electron/session.cjs').createSessionService({ file: path.join(dir, 'session.json'), files })
+  const tab = { id: randomUUID(), name: 'Untitled 1', content: '', savedContent: '', eol: 'LF', bom: false }
+  for (const color of ['#60a5fa', '#ABCDEF', null, undefined]) {
+    const colored = color === undefined ? tab : { ...tab, color }
+    await service.save({ tabs: [colored], activeId: tab.id, mode: 'source' })
+    assert.equal((await service.load()).tabs[0].color, color)
+  }
+  for (const color of ['red', 'url(https://example.com)', '#fff', 123]) {
+    await assert.rejects(service.save({ tabs: [{ ...tab, color }], activeId: tab.id, mode: 'source' }), /invalid/i)
+  }
+  await service.save({ tabs: [], activeId: null, mode: 'source' })
+  assert.deepEqual((await service.load()).tabs, [])
+})
 test('session checkpoints cannot forge paths and retain external-change protection after restart', async t => {
   const dir = await mkdtemp(path.join(scratch, 'notepad-session-security-')); t.after(() => rm(dir, { recursive: true, force: true }))
   const target = path.join(dir, 'original.md'); await writeFile(target, 'Original')

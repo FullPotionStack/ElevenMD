@@ -6,15 +6,15 @@ Write Markdown and plain text in a desktop app for Windows, Linux, and macOS. Ed
 
 ## Install
 
-Download **0.3.6** directly below; you do not need Node.js or a source build to use these downloads. `x64` is Intel/AMD 64-bit; `arm64` is ARM 64-bit, including Apple silicon. ElevenMD is an alpha without publisher-certified releases. [Release notes and checksums](https://github.com/FullPotionStack/ElevenMD/releases/tag/v0.3.6).
+Download **0.3.7** directly below; you do not need Node.js or a source build to use these downloads. `x64` is Intel/AMD 64-bit; `arm64` is ARM 64-bit, including Apple silicon. ElevenMD is an alpha without publisher-certified releases. [Release notes and checksums](https://github.com/FullPotionStack/ElevenMD/releases/tag/v0.3.7).
 
 | Your computer | Installer | Portable (no installation) |
 | --- | --- | --- |
-| Windows, Intel/AMD | [Download EXE](https://github.com/FullPotionStack/ElevenMD/releases/download/v0.3.6/ElevenMD-Setup-0.3.6.exe) | [Download ZIP](https://github.com/FullPotionStack/ElevenMD/releases/download/v0.3.6/ElevenMD-0.3.6-windows-x64-portable.zip) |
-| Linux, Intel/AMD | [Download DEB](https://github.com/FullPotionStack/ElevenMD/releases/download/v0.3.6/ElevenMD-0.3.6-linux-x64.deb), Debian/Ubuntu only | [Download tar.gz](https://github.com/FullPotionStack/ElevenMD/releases/download/v0.3.6/ElevenMD-0.3.6-linux-x64-portable.tar.gz) |
-| Linux, ARM64 | [Download DEB](https://github.com/FullPotionStack/ElevenMD/releases/download/v0.3.6/ElevenMD-0.3.6-linux-arm64.deb), Debian/Ubuntu only | [Download tar.gz](https://github.com/FullPotionStack/ElevenMD/releases/download/v0.3.6/ElevenMD-0.3.6-linux-arm64-portable.tar.gz) |
-| macOS, Intel | [Download DMG](https://github.com/FullPotionStack/ElevenMD/releases/download/v0.3.6/ElevenMD-0.3.6-mac-x64.dmg) | [Download ZIP](https://github.com/FullPotionStack/ElevenMD/releases/download/v0.3.6/ElevenMD-0.3.6-mac-x64-portable.zip) |
-| macOS, Apple silicon (M-series) | [Download DMG](https://github.com/FullPotionStack/ElevenMD/releases/download/v0.3.6/ElevenMD-0.3.6-mac-arm64.dmg) | [Download ZIP](https://github.com/FullPotionStack/ElevenMD/releases/download/v0.3.6/ElevenMD-0.3.6-mac-arm64-portable.zip) |
+| Windows, Intel/AMD | [Download EXE](https://github.com/FullPotionStack/ElevenMD/releases/download/v0.3.7/ElevenMD-Setup-0.3.7.exe) | [Download ZIP](https://github.com/FullPotionStack/ElevenMD/releases/download/v0.3.7/ElevenMD-0.3.7-windows-x64-portable.zip) |
+| Linux, Intel/AMD | [Download DEB](https://github.com/FullPotionStack/ElevenMD/releases/download/v0.3.7/ElevenMD-0.3.7-linux-x64.deb), Debian/Ubuntu only | [Download tar.gz](https://github.com/FullPotionStack/ElevenMD/releases/download/v0.3.7/ElevenMD-0.3.7-linux-x64-portable.tar.gz) |
+| Linux, ARM64 | [Download DEB](https://github.com/FullPotionStack/ElevenMD/releases/download/v0.3.7/ElevenMD-0.3.7-linux-arm64.deb), Debian/Ubuntu only | [Download tar.gz](https://github.com/FullPotionStack/ElevenMD/releases/download/v0.3.7/ElevenMD-0.3.7-linux-arm64-portable.tar.gz) |
+| macOS, Intel | [Download DMG](https://github.com/FullPotionStack/ElevenMD/releases/download/v0.3.7/ElevenMD-0.3.7-mac-x64.dmg) | [Download ZIP](https://github.com/FullPotionStack/ElevenMD/releases/download/v0.3.7/ElevenMD-0.3.7-mac-x64-portable.zip) |
+| macOS, Apple silicon (M-series) | [Download DMG](https://github.com/FullPotionStack/ElevenMD/releases/download/v0.3.7/ElevenMD-0.3.7-mac-arm64.dmg) | [Download ZIP](https://github.com/FullPotionStack/ElevenMD/releases/download/v0.3.7/ElevenMD-0.3.7-mac-arm64-portable.zip) |
 
 On Windows, run the installer or extract the entire ZIP and open `ElevenMD.exe`. On macOS, open the DMG and drag `ElevenMD.app` to Applications, or extract the ZIP. On Debian/Ubuntu, install the DEB with `sudo apt install ./<downloaded-file>.deb`.
 
@@ -33,7 +33,8 @@ The Windows checksum file is `SHA256SUMS`; each Linux/macOS architecture has a s
 - Use Formatted for ordinary Markdown, Source for exact syntax, and Preview for reading.
 - Open `.md`, `.markdown`, and `.txt` files. Open and Save use native dialogs.
 - Ctrl+N/O/S opens a new tab, opens a file, or saves. Ctrl+Shift+S is Save as; Ctrl+F/H is find/replace. These are currently Ctrl shortcuts on macOS too.
-- Closing the app checkpoints all tabs, including unnamed drafts. Only Save or Save as writes to your actual document files.
+- Closing the window checkpoints all tabs, including unnamed drafts. Closing the last tab with × or Ctrl+W closes the app after Save/Discard/Cancel protection; dismissed tabs are not restored. Only Save or Save as writes to your actual document files.
+- Right-click a tab (or focus it and press Shift+F10) to choose a preset/custom color for its bottom strip. Colors are remembered with the session; choose No color to remove one.
 - Edits made by another program trigger overwrite protection. Use Save as to keep both versions.
 - Light, Dark, and Auto themes are available in the menu bar. Settings controls font size, source wrapping, spelling, and remote images.
 
@@ -43,7 +44,7 @@ Formatted edits normalize Markdown syntax. Advanced constructs that the formatte
 
 ElevenMD checks this repository's latest published release when it opens. You can also use **Help → Check updates**. An available update appears in the status bar; select it to read the release notes.
 
-Checking contacts GitHub and exposes the normal network information a request carries, including your IP address. It sends no document text or diagnostic logs. On Windows, download and installation require your action. The updater verifies a SHA-256 checksum from the release before offering to run the installer, and checkpoints your tabs first. Starting with 0.3.6, Windows updates show download and installation progress without the setup wizard, then reopen the app. Portable copies update in place without creating shortcuts, file associations, or uninstall entries. An older installed updater may show the wizard once while moving to 0.3.6; older portable users should close the app and replace its runtime using the portable archive. On Linux and macOS, the Updates panel opens the release page: choose the matching native download, close the app, and install or replace it manually. The app does not download or execute Windows installers on those platforms.
+Checking contacts GitHub and exposes the normal network information a request carries, including your IP address. It sends no document text or diagnostic logs. On Windows, download and installation require your action. The updater verifies a SHA-256 checksum from the release before offering to run the installer, and checkpoints your tabs first. Starting with 0.3.6, Windows updates show download and installation progress without the setup wizard, then reopen the app. Portable copies update in place without creating shortcuts, file associations, or uninstall entries. An older installed updater may show the wizard once while moving to 0.3.7; older portable users should close the app and replace its runtime using the portable archive. On Linux and macOS, the Updates panel opens the release page: choose the matching native download, close the app, and install or replace it manually. The app does not download or execute Windows installers on those platforms.
 
 A checksum detects a damaged or mismatched download; it is not a code signature or protection against an attacker controlling this repository. Updating a source checkout does not update an installed app.
 

@@ -18,6 +18,10 @@ button.selected { background: var(--selected); color: var(--accent); }
 .tab[aria-selected="false"] { color: var(--muted); }
 .tab { display: flex; align-items: center; gap: 14px; flex: 1; min-width: 0; padding: 11px 10px 11px 15px; border-radius: 8px 0 0 0; text-align: left; }
 .tab > span:first-child { overflow: hidden; text-overflow: ellipsis; } .dirty-dot { margin-left: auto; font-size: 8px; color: var(--muted); }
+.tab-color-strip { position: absolute; bottom: 0; left: 0; right: 0; height: 3px; pointer-events: none; }
+.tab-color-palette { display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px; }
+.tab-color-palette button { display: flex; align-items: center; gap: 10px; text-align: left; }
+.tab-color-swatch { width: 16px; height: 16px; border: 1px solid var(--border); border-radius: 50%; }
 .close-tab { margin: 0 5px 0 0; padding: 2px 6px; font-size: 18px; color: var(--muted); }
 #new-tab { font-size: 21px; padding: 3px 9px; align-self: flex-start; }
 .app-name { color: var(--muted); font-size: 11px; padding: 0 10px 6px; }
