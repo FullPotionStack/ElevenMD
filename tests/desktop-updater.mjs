@@ -45,13 +45,19 @@ try {
     const helper = path.join(target, appPath, 'electron/updater/main.cjs')
     const helperSource = await readFile(helper, 'utf8')
     await writeFile(helper, helperSource.replace('timeoutMs: 45000', 'timeoutMs: 3000').replace("electron.dialog.showErrorBox('ElevenMD update stopped', error.message); app.quit();", 'app.quit();'))
+    // The fallback app may legitimately clean a terminal job before the harness reads its receipt/journal.
+    // Preserve only this isolated fixture's evidence; cleanup itself has independent recovery tests.
+    const recovery = path.join(target, appPath, 'electron/updater/recovery.cjs')
+    const recoverySource = await readFile(recovery, 'utf8')
+    assert.ok(recoverySource.includes('async function cleanupCompletedJobs(context) {'))
+    await writeFile(recovery, recoverySource.replace('async function cleanupCompletedJobs(context) {', 'async function cleanupCompletedJobs(context) { return;'))
   }
   if (serviceFlow) {
     const supportFile = path.join(path.dirname(pkgFile), 'electron/support.cjs'), supportSource = await readFile(supportFile, 'utf8')
     const needle = 'createUpdateService({ version, repository:'; assert.ok(supportSource.includes(needle))
     await writeFile(supportFile, supportSource.replace(needle, 'createUpdateService({ fetchImpl: (...args) => process.__elevenmdFixtureFetch(...args), version, repository:'))
   }
-  const built = await createBundle({ root: staged, destination: path.join(scratch, 'fixture.bundle.gz'), version: '0.3.10', repository: 'FullPotionStack/ElevenMD', platform: process.platform, arch: process.arch, route, executable })
+  const built = await createBundle({ root: staged, destination: path.join(scratch, 'fixture.bundle.gz'), version: JSON.parse(await readFile('package.json', 'utf8')).version, repository: 'FullPotionStack/ElevenMD', platform: process.platform, arch: process.arch, route, executable })
   const { manifest } = built
   const env = { ...process.env, NOTEPAD_USER_DATA_DIR: userData }; delete env.ELECTRON_RUN_AS_NODE
   app = await electron.launch({ executablePath: path.join(target, executable), args: [], env })
@@ -115,7 +121,7 @@ try {
   const result = await waitResult(); restartPid = result.pid || (missingAck ? JSON.parse(await readFile(path.join(directory, 'restart-owner.json'), 'utf8')).pid : undefined)
   assert.equal(result.status, crash ? 'recovered' : missingAck ? 'failed' : 'complete')
   assert.ok(Number.isInteger(restartPid))
-  assert.equal(JSON.parse(await readFile(pkgFile, 'utf8')).version, crash || missingAck ? '0.3.9' : '0.3.10')
+  assert.equal(JSON.parse(await readFile(pkgFile, 'utf8')).version, crash || missingAck ? '0.3.9' : manifest.version)
   const session = JSON.parse(await readFile(path.join(userData, 'session.json'), 'utf8'))
   assert.equal(session.tabs[0].content, expectedDraft)
   if (route === 'portable') assert.equal(await readFile(path.join(target, 'unrelated.md'), 'utf8'), 'Unrelated original file must survive')
