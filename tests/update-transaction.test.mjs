@@ -68,6 +68,16 @@ test('reservation rejects a substituted installation and competing prepared upda
   await assert.rejects(reserveUpdate({ target: f.target, jobDir: f.jobDir, identity }), /identity|changed/i)
   assert.equal(await readFile(path.join(f.target, 'elevenmd'), 'utf8'), 'different installation')
 })
+test('package-managed reservations use a shared private lock instead of the system installation parent', async t => {
+  const f = await fixture(t), identity = await captureIdentity(f.target, 'elevenmd')
+  const lockDirectory = path.join(f.dir, 'private-updates'); await mkdir(lockDirectory)
+  const reservation = await reserveUpdate({ target: f.target, jobDir: f.jobDir, identity, lockDirectory })
+  assert.equal(path.dirname(reservation.lock), lockDirectory)
+  const other = path.join(f.dir, 'job-other'); await mkdir(other)
+  await assert.rejects(reserveUpdate({ target: f.target, jobDir: other, identity, lockDirectory }))
+  await releaseReservation(reservation)
+})
+
 test('terminal journal cleanup is retryable after a crash before workspace removal', async t => {
   const f = await fixture(t); await applyUpdate(f)
   const journalPath = path.join(f.jobDir, 'transaction.json'), journal = JSON.parse(await readFile(journalPath, 'utf8'))

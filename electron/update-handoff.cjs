@@ -43,7 +43,7 @@ async function prepareHandoff({ targetInfo, userData, staged, manifest, director
   let gate, reservation;
   return {
     async launch() {
-      reservation = await reserveUpdate({ target, jobDir: directory, identity });
+      reservation = await reserveUpdate({ target, jobDir: directory, identity, ...(route === 'deb' ? { lockDirectory: path.dirname(directory) } : {}) });
       gate = await createGate({ token, kind: 'ready', timeoutMs: 30000 });
       const job = { schema: 1, protocol: 1, parentPid, token, port: gate.port, directory, helperExec, targetInfo, userData, staged, manifest, reservation };
       const jobFile = path.join(directory, 'job.json'); await durable(jobFile, job);

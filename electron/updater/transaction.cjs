@@ -53,17 +53,19 @@ async function assertIdentity(target, identity) {
   if (!identity || JSON.stringify(await captureIdentity(target, identity.executable)) !== JSON.stringify(identity)) throw new Error('Installation identity changed since update preparation.');
 }
 function lockPath(target) { return path.join(path.dirname(target), `.${path.basename(target)}.elevenmd-update.lock`); }
-async function reserveUpdate({ target, jobDir, identity }) {
+async function reserveUpdate({ target, jobDir, identity, lockDirectory }) {
   target = await canonicalDirectory(target); jobDir = await canonicalDirectory(jobDir);
   await assertIdentity(target, identity);
-  const id = randomUUID(), reservation = { id, jobDir, target, identity, pid: process.pid };
-  const handle = await fs.open(lockPath(target), 'wx', 0o600);
+  if (lockDirectory) await canonicalDirectory(lockDirectory);
+  const lock = lockDirectory ? path.join(lockDirectory, `.installation-${require('node:crypto').createHash('sha256').update(target).digest('hex')}.lock`) : lockPath(target);
+  const id = randomUUID(), reservation = { id, jobDir, target, identity, lock, pid: process.pid };
+  const handle = await fs.open(lock, 'wx', 0o600);
   try { await handle.writeFile(JSON.stringify(reservation)); await handle.sync(); } finally { await handle.close(); }
-  try { await assertIdentity(target, identity); } catch (error) { await fs.unlink(lockPath(target)); throw error; }
+  try { await assertIdentity(target, identity); } catch (error) { await fs.unlink(lock); throw error; }
   return reservation;
 }
 async function assertReservation(reservation, { identity = true } = {}) {
-  const filename = lockPath(reservation.target), stat = await fs.lstat(filename);
+  const filename = reservation.lock || lockPath(reservation.target), stat = await fs.lstat(filename);
   if (!stat.isFile() || stat.isSymbolicLink() || stat.size > 16384) throw new Error('Invalid update reservation.');
   const owner = JSON.parse(await fs.readFile(filename, 'utf8'));
   if (owner.id !== reservation.id || owner.jobDir !== reservation.jobDir || owner.target !== reservation.target) throw new Error('Update reservation mismatch.');
@@ -71,7 +73,7 @@ async function assertReservation(reservation, { identity = true } = {}) {
 }
 async function releaseReservation(reservation) {
   if (!reservation || await exists(path.join(reservation.jobDir, 'transaction.json'))) return;
-  const filename = lockPath(reservation.target), stat = await exists(filename); if (!stat) return;
+  const filename = reservation.lock || lockPath(reservation.target), stat = await exists(filename); if (!stat) return;
   if (!stat.isFile() || stat.isSymbolicLink() || stat.size > 16384) throw new Error('Invalid reservation lock.');
   const owner = JSON.parse(await fs.readFile(filename, 'utf8'));
   if (owner.id !== reservation.id || owner.jobDir !== reservation.jobDir) throw new Error('Reservation owner mismatch.');
