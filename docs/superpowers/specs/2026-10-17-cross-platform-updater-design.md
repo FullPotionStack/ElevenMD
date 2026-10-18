@@ -1,6 +1,6 @@
 # Cross-platform updates
 
-Status: proposed specification; implementation has not started.
+Status: approved; implementation and native validation are on `feat/cross-platform-updater`. No release or owner installation is implied.
 
 ## Goal and agreed flow
 
