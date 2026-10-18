@@ -4,6 +4,16 @@ import { mkdtemp, mkdir, writeFile, readFile, rm } from 'node:fs/promises'
 import path from 'node:path'
 import { testScratch } from './helpers/electron-harness.mjs'
 import { markRuntime, emitUpdateBundle } from '../scripts/update-bundles.mjs'
+test('macOS managed marker stays inside Resources so the bundle root can be sealed', async t => {
+  const dir = await mkdtemp(path.join(await testScratch(), 'mac-update-marker-')); t.after(() => rm(dir, { recursive: true, force: true }))
+  await mkdir(path.join(dir, 'Contents/MacOS'), { recursive: true }); await mkdir(path.join(dir, 'Contents/Resources'), { recursive: true })
+  await writeFile(path.join(dir, 'Contents/MacOS/ElevenMD'), 'runtime')
+  await markRuntime({ root: dir, platform: 'darwin', arch: 'arm64', route: 'mac-bundle', executable: 'Contents/MacOS/ElevenMD' })
+  const marker = JSON.parse(await readFile(path.join(dir, 'Contents/Resources/.elevenmd-managed.json'), 'utf8'))
+  assert.ok(marker.owned.includes('Contents/Resources/.elevenmd-managed.json'))
+  await assert.rejects(readFile(path.join(dir, '.elevenmd-managed.json')))
+})
+
 test('packaging emits an immutable platform-bound descriptor and explicit owned-file marker', async t => {
   const dir = await mkdtemp(path.join(await testScratch(), 'update-packaging-')); t.after(() => rm(dir, { recursive: true, force: true }))
   const root = path.join(dir, 'runtime'); await mkdir(root); await writeFile(path.join(root, 'elevenmd'), 'runtime')

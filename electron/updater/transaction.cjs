@@ -3,6 +3,15 @@ const fs = require('./fs.cjs').promises;
 const path = require('node:path');
 const { randomUUID } = require('node:crypto');
 const { relative, validateManifest, verifyTree, canonicalDirectory } = require('../update-bundle.cjs');
+async function retryFileOperation(operation, { platform = process.platform, budgetMs = 3000 } = {}) {
+  const deadline = Date.now() + budgetMs;
+  while (true) {
+    try { return await operation(); } catch (error) {
+      if (platform !== 'win32' || !['EPERM', 'EBUSY', 'EACCES'].includes(error.code) || Date.now() >= deadline) throw error;
+      await new Promise(resolve => setTimeout(resolve, 50));
+    }
+  }
+}
 async function exists(filename) { try { return await fs.lstat(filename); } catch (error) { if (error.code === 'ENOENT') return null; throw error; } }
 async function durable(filename, value) {
   const temporary = `${filename}.${randomUUID()}.tmp`, handle = await fs.open(temporary, 'wx', 0o600);
@@ -18,10 +27,11 @@ async function safeParents(root, name) {
   }
 }
 async function readMarker(root) {
-  const filename = path.join(root, '.elevenmd-managed.json'), stat = await fs.lstat(filename);
+  const markerPath = await exists(path.join(root, '.elevenmd-managed.json')) ? '.elevenmd-managed.json' : 'Contents/Resources/.elevenmd-managed.json';
+  const filename = path.join(root, markerPath), stat = await fs.lstat(filename);
   if (!stat.isFile() || stat.isSymbolicLink() || stat.nlink !== 1 || stat.size > 2 * 1024 * 1024) throw new Error('Invalid managed installation marker.');
   const value = JSON.parse(await fs.readFile(filename, 'utf8'));
-  if (value.schema !== 1 || !Array.isArray(value.owned) || value.owned.length > 10000 || !value.owned.includes('.elevenmd-managed.json') || !value.owned.includes(value.executable)) throw new Error('Invalid managed installation inventory.');
+  if (value.schema !== 1 || !Array.isArray(value.owned) || value.owned.length > 10000 || !value.owned.includes(markerPath) || !value.owned.includes(value.executable)) throw new Error('Invalid managed installation inventory.');
   const seen = new Set();
   for (const name of value.owned) { relative(name); const lower = name.toLowerCase(); if (seen.has(lower)) throw new Error('Duplicate managed path.'); seen.add(lower); }
   return value;
@@ -31,7 +41,7 @@ async function captureIdentity(target, executable) {
   const root = await fs.lstat(target, { bigint: true }), file = await fs.lstat(path.join(target, executable), { bigint: true });
   if (!file.isFile() || file.isSymbolicLink() || file.nlink !== 1n) throw new Error('Invalid installation executable.');
   const hashes = {};
-  for (const name of ['.elevenmd-managed.json', 'resources/app/package.json', 'Contents/Resources/app/package.json']) {
+  for (const name of ['.elevenmd-managed.json', 'Contents/Resources/.elevenmd-managed.json', 'resources/app/package.json', 'Contents/Resources/app/package.json']) {
     const filename = path.join(target, name), stat = await exists(filename);
     if (!stat) continue;
     if (!stat.isFile() || stat.isSymbolicLink() || stat.size > 2 * 1024 * 1024) throw new Error('Invalid installation identity file.');
@@ -115,17 +125,17 @@ async function applyUpdate({ target, staged, manifest, jobDir, reservation, onPr
     await durable(path.join(jobDir, 'transaction.json'), journal); journalWritten = true;
     await fault('prepared');
     if (manifest.route === 'mac-bundle') {
-      await fs.rename(target, backup); await fault('backup:0');
-      await fs.rename(incoming, target); await fault('installed:0');
+      await retryFileOperation(() => fs.rename(target, backup)); await fault('backup:0');
+      await retryFileOperation(() => fs.rename(incoming, target)); await fault('installed:0');
     } else {
       for (const [i, op] of operations.entries()) {
         await safeParents(target, op.path);
         if (op.hadOld) {
           const destination = path.join(backup, op.path); await fs.mkdir(path.dirname(destination), { recursive: true });
-          await fs.rename(path.join(target, op.path), destination);
+          await retryFileOperation(() => fs.rename(path.join(target, op.path), destination));
         }
         await fault(`backup:${i}`);
-        if (op.hasNew) { const destination = path.join(target, op.path); await fs.mkdir(path.dirname(destination), { recursive: true }); await fs.rename(path.join(incoming, op.path), destination); }
+        if (op.hasNew) { const destination = path.join(target, op.path); await fs.mkdir(path.dirname(destination), { recursive: true }); await retryFileOperation(() => fs.rename(path.join(incoming, op.path), destination)); }
         await fault(`installed:${i}`);
         onProgress({ completed: i + 1, total: operations.length });
       }
@@ -151,8 +161,8 @@ async function finish(jobDir, rollback) {
   if (rollback) {
     if (journal.route === 'mac-bundle') {
       if (await exists(backup)) {
-        if (await exists(journal.target)) { await canonicalDirectory(journal.target); await fs.rename(journal.target, path.join(journal.workspace, 'failed')); }
-        await fs.rename(backup, journal.target);
+        if (await exists(journal.target)) { await canonicalDirectory(journal.target); await retryFileOperation(() => fs.rename(journal.target, path.join(journal.workspace, 'failed'))); }
+        await retryFileOperation(() => fs.rename(backup, journal.target));
       }
     } else {
       await canonicalDirectory(journal.target);
@@ -161,11 +171,11 @@ async function finish(jobDir, rollback) {
         const saved = path.join(backup, op.path), destination = path.join(journal.target, op.path);
         if (await exists(saved)) {
           const stat = await exists(destination); if (stat?.isDirectory()) throw new Error('Unexpected directory blocks rollback.');
-          if (stat) await fs.unlink(destination);
-          await fs.mkdir(path.dirname(destination), { recursive: true }); await fs.rename(saved, destination);
+          if (stat) await retryFileOperation(() => fs.unlink(destination));
+          await fs.mkdir(path.dirname(destination), { recursive: true }); await retryFileOperation(() => fs.rename(saved, destination));
         } else if (!op.hadOld && op.hasNew && !(await exists(path.join(incoming, op.path)))) {
           const stat = await exists(destination); if (stat?.isDirectory()) throw new Error('Unexpected directory blocks rollback.');
-          if (stat) await fs.unlink(destination);
+          if (stat) await retryFileOperation(() => fs.unlink(destination));
         }
       }
     }
@@ -184,4 +194,4 @@ async function cleanupTerminal(jobDir, journal) {
   if (await exists(journal.workspace)) { await canonicalDirectory(journal.workspace); await fs.rm(journal.workspace, { recursive: true, force: true }); }
   if (stat) await fs.unlink(lock);
 }
-module.exports = { captureIdentity, assertIdentity, reserveUpdate, assertReservation, releaseReservation, applyUpdate, rollbackUpdate: jobDir => finish(jobDir, true), commitUpdate: jobDir => finish(jobDir, false), readJournal, readMarker, durable };
+module.exports = { retryFileOperation, captureIdentity, assertIdentity, reserveUpdate, assertReservation, releaseReservation, applyUpdate, rollbackUpdate: jobDir => finish(jobDir, true), commitUpdate: jobDir => finish(jobDir, false), readJournal, readMarker, durable };

@@ -9,6 +9,7 @@ async function startDesktop(electron, options = {}) {
   const { app, BrowserWindow, Menu, session, nativeTheme } = electron;
   const env = options.env || process.env;
   if (env.NOTEPAD_USER_DATA_DIR) app.setPath('userData', path.resolve(env.NOTEPAD_USER_DATA_DIR));
+  if (env.ELEVENMD_UPDATE_ACK_PORT && env.ELEVENMD_UPDATE_ACK_TOKEN) await require('./updater/protocol.cjs').notify({ port: Number(env.ELEVENMD_UPDATE_ACK_PORT), token: env.ELEVENMD_UPDATE_ACK_TOKEN, kind: 'started', pid: process.pid });
   const policy = createSecurityPolicy(path.join(__dirname, '..', 'dist'), app.isPackaged ? undefined : env.NOTEPAD_DEV_URL);
   if (!app.requestSingleInstanceLock()) { app.quit(); return null; }
   let deliverLaunch;

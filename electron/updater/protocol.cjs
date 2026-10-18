@@ -1,6 +1,6 @@
 'use strict';
 const net = require('node:net');
-function createGate({ token, kind, timeoutMs = 30000 }) {
+function createGate({ token, kind, timeoutMs = 30000, onStarted }) {
   if (!/^[a-f0-9]{64}$/.test(token) || !['ready', 'restored'].includes(kind)) throw new Error('Invalid gate.');
   return new Promise((resolve, reject) => {
     const peers = new Set(); let settled = false, timer, resolveReady, rejectReady;
@@ -17,7 +17,12 @@ function createGate({ token, kind, timeoutMs = 30000 }) {
         if (!bytes.includes('\n')) return;
         try {
           const value = JSON.parse(bytes.trim());
-          if (value.token !== token || value.kind !== kind || Object.keys(value).length !== 2) return socket.destroy();
+          if (value.token !== token) return socket.destroy();
+          if (kind === 'restored' && value.kind === 'started' && Number.isSafeInteger(value.pid) && value.pid > 0 && Object.keys(value).length === 3 && typeof onStarted === 'function') {
+            Promise.resolve(onStarted(value.pid)).then(() => socket.end(), error => { if (!settled) { settled = true; rejectReady(error); } socket.destroy(); });
+            return;
+          }
+          if (value.kind !== kind || Object.keys(value).length !== 2) return socket.destroy();
           settled = true; clearTimeout(timer); socket.setTimeout(0); server.close();
           for (const peer of peers) if (peer !== socket) peer.destroy();
           resolveReady(socket);
@@ -44,11 +49,11 @@ async function waitForExit({ pid, timeoutMs = 30000, intervalMs = 100 }) {
     await new Promise(resolve => setTimeout(resolve, intervalMs));
   }
 }
-function notify({ port, token, kind }) {
+function notify({ port, token, kind, pid }) {
   if (!Number.isInteger(port) || port < 1 || port > 65535 || !/^[a-f0-9]{64}$/.test(token)) return Promise.reject(new Error('Invalid updater acknowledgement.'));
   return new Promise((resolve, reject) => {
     const socket = net.connect(port, '127.0.0.1'); socket.setTimeout(5000, () => socket.destroy(new Error('Acknowledgement timed out.')));
-    socket.once('error', reject); socket.once('connect', () => socket.end(JSON.stringify({ token, kind }) + '\n', resolve));
+    socket.once('error', reject); socket.once('connect', () => socket.end(JSON.stringify({ token, kind, ...(kind === 'started' && Number.isSafeInteger(pid) && pid > 0 ? { pid } : {}) }) + '\n', resolve));
   });
 }
 module.exports = { createGate, waitForExit, notify };

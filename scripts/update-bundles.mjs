@@ -4,8 +4,9 @@ import { createRequire } from 'node:module'
 const { inventory, createBundle } = createRequire(import.meta.url)('../electron/update-bundle.cjs')
 export async function markRuntime({ root, platform, arch, route, executable }) {
   const entries = await inventory(root)
-  const marker = { schema: 1, platform, arch, route, executable, owned: [...entries.map(e => e.path), '.elevenmd-managed.json'].filter((p, i, a) => a.indexOf(p) === i).sort() }
-  await writeFile(path.join(root, '.elevenmd-managed.json'), JSON.stringify(marker), { flag: 'wx' })
+  const markerPath = platform === 'darwin' ? 'Contents/Resources/.elevenmd-managed.json' : '.elevenmd-managed.json'
+  const marker = { schema: 1, platform, arch, route, executable, owned: [...entries.map(e => e.path), markerPath].filter((p, i, a) => a.indexOf(p) === i).sort() }
+  await writeFile(path.join(root, markerPath), JSON.stringify(marker), { flag: 'wx' })
 }
 export async function emitUpdateBundle({ root, release, prefix, version, platform, arch, route, executable }) {
   const stem = `${prefix}-${version}-${platform === 'darwin' ? 'mac' : platform === 'win32' ? 'windows' : platform}-${arch}-update`

@@ -58,6 +58,8 @@ async function stopOwnedChild(child, { platform = process.platform, wait = waitF
   try {
     if (platform === 'win32') await exec('taskkill.exe', ['/PID', String(child.pid), '/T', '/F']);
     else child.kill('SIGTERM');
+  } catch { /* The owned process may already have exited; verify independently. */ }
+  try {
     await wait({ pid: child.pid, timeoutMs: 10000 });
   } catch {
     const error = new Error('Restarted process has not been confirmed stopped; recovery files preserved.');
@@ -69,22 +71,26 @@ function installerArguments(job) {
   return ['/SP-', '/SILENT', '/NOCANCEL', '/NORESTART', '/NOCLOSEAPPLICATIONS', '/NORESTARTAPPLICATIONS', '/UPDATE', '/EXTERNALUPDATER', `/PARENTPID=${job.parentPid}`, `/DIR=${job.targetInfo.target}`];
 }
 async function restart(job, { acknowledge = true } = {}) {
-  const token = randomBytes(32).toString('hex'), gate = acknowledge ? await createGate({ token, kind: 'restored', timeoutMs: 45000 }) : null;
+  let browserPid;
+  const token = randomBytes(32).toString('hex'), gate = acknowledge ? await createGate({ token, kind: 'restored', timeoutMs: 45000, onStarted: async pid => {
+    if (browserPid && browserPid !== pid) throw new Error('Restart browser identity changed.');
+    browserPid = pid; await durable(path.join(job.directory, 'restart-owner.json'), { pid, target: job.targetInfo.target });
+  } }) : null;
   const env = { ...cleanEnvironment(process.env), NOTEPAD_USER_DATA_DIR: job.userData };
   if (gate) { env.ELEVENMD_UPDATE_ACK_PORT = String(gate.port); env.ELEVENMD_UPDATE_ACK_TOKEN = token; }
   let child;
   try {
     child = spawn(job.targetInfo.execPath, [], { shell: false, detached: true, stdio: 'ignore', env });
     await new Promise((resolve, reject) => { child.once('error', reject); child.once('spawn', resolve); });
-    await durable(path.join(job.directory, 'restart-owner.json'), { pid: child.pid, target: job.targetInfo.target });
+    if (!browserPid) await durable(path.join(job.directory, 'restart-owner.json'), { pid: child.pid, target: job.targetInfo.target });
     if (gate) {
       const failure = new Promise((_, reject) => child.once('exit', () => reject(new Error('Updated application exited before session readiness.'))));
       await Promise.race([gate.ready, failure]);
     }
-    child.unref(); return child;
+    child.unref(); return { pid: browserPid || child.pid };
   } catch (error) {
     // Only this newly launched child is owned by this helper. Stop it before rollback.
-    await stopOwnedChild(child);
+    await stopOwnedChild(browserPid ? { pid: browserPid, exitCode: null, kill: signal => process.kill(browserPid, signal) } : child);
     throw error;
   } finally { gate?.dispose(); }
 }
@@ -107,10 +113,10 @@ async function runJob(job, progress) {
     await durable(path.join(job.directory, 'result.json'), { status: 'complete', pid: reopened.pid });
     progress('Update complete.');
   } catch (error) {
-    if (error.unsafeToRollback) { await durable(path.join(job.directory, 'result.json'), { status: 'recovery-required' }); throw error; }
+    if (error.unsafeToRollback) { await durable(path.join(job.directory, 'result.json'), { status: 'recovery-required', reason: 'restart-still-running' }); throw error; }
     if (['portable', 'mac-bundle'].includes(job.targetInfo.route)) {
       try { await rollbackUpdate(job.directory); await restart(job, { acknowledge: false }); }
-      catch { await durable(path.join(job.directory, 'result.json'), { status: 'recovery-required' }); throw new Error('Update failed. Recovery files were preserved; do not delete the update folder.'); }
+      catch (recoveryError) { await durable(path.join(job.directory, 'result.json'), { status: 'recovery-required', reason: recoveryError.code || 'recovery-failed' }); throw new Error('Update failed. Recovery files were preserved; do not delete the update folder.'); }
     } else { await releaseReservation(job.reservation); await restart(job, { acknowledge: false }).catch(() => {}); }
     await durable(path.join(job.directory, 'result.json'), { status: 'failed' });
     throw new Error('Update failed. The previous app was restored where possible. Your documents were not changed.');

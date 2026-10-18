@@ -9,6 +9,16 @@ test('loopback readiness requires the one-use token and rejects malformed peers'
   const good = net.connect(gate.port, '127.0.0.1'); good.on('error', () => {}); good.write(JSON.stringify({ token, kind: 'ready' }) + '\n')
   const socket = await gate.ready; assert.equal(socket.remoteAddress, '127.0.0.1'); gate.dispose(); good.destroy(); bad.destroy()
 })
+test('restart gate records the real browser PID before waiting for renderer readiness', async () => {
+  let browserPid
+  const token = 'c'.repeat(64), gate = await createGate({ token, kind: 'restored', timeoutMs: 2000, onStarted: pid => { browserPid = pid } })
+  const started = net.connect(gate.port, '127.0.0.1'); started.on('error', () => {}); started.write(JSON.stringify({ token, kind: 'started', pid: 12345 }) + '\n')
+  await new Promise(resolve => started.once('close', resolve))
+  assert.equal(browserPid, 12345)
+  const ready = net.connect(gate.port, '127.0.0.1'); ready.on('error', () => {}); ready.write(JSON.stringify({ token, kind: 'restored' }) + '\n')
+  await gate.ready; gate.dispose(); ready.destroy()
+})
+
 test('failed readiness times out instead of permitting app quit', async () => {
   const gate = await createGate({ token: 'b'.repeat(64), kind: 'ready', timeoutMs: 30 })
   await assert.rejects(gate.ready, /timed out/); gate.dispose()
