@@ -11,17 +11,17 @@ A Markdown and plain-text desktop editor for Windows, Linux, and macOS.
 
 | Platform | Installer | Portable |
 | --- | --- | --- |
-| Windows x64 | [EXE](https://github.com/FullPotionStack/ElevenMD/releases/download/v0.3.11/ElevenMD-Setup-0.3.11.exe) | [ZIP](https://github.com/FullPotionStack/ElevenMD/releases/download/v0.3.11/ElevenMD-0.3.11-windows-x64-portable.zip) |
-| Linux x64 | [DEB](https://github.com/FullPotionStack/ElevenMD/releases/download/v0.3.11/ElevenMD-0.3.11-linux-x64.deb) | [tar.gz](https://github.com/FullPotionStack/ElevenMD/releases/download/v0.3.11/ElevenMD-0.3.11-linux-x64-portable.tar.gz) |
-| Linux ARM64 | [DEB](https://github.com/FullPotionStack/ElevenMD/releases/download/v0.3.11/ElevenMD-0.3.11-linux-arm64.deb) | [tar.gz](https://github.com/FullPotionStack/ElevenMD/releases/download/v0.3.11/ElevenMD-0.3.11-linux-arm64-portable.tar.gz) |
-| macOS Intel | [DMG](https://github.com/FullPotionStack/ElevenMD/releases/download/v0.3.11/ElevenMD-0.3.11-mac-x64.dmg) | [ZIP](https://github.com/FullPotionStack/ElevenMD/releases/download/v0.3.11/ElevenMD-0.3.11-mac-x64-portable.zip) |
-| macOS Apple silicon | [DMG](https://github.com/FullPotionStack/ElevenMD/releases/download/v0.3.11/ElevenMD-0.3.11-mac-arm64.dmg) | [ZIP](https://github.com/FullPotionStack/ElevenMD/releases/download/v0.3.11/ElevenMD-0.3.11-mac-arm64-portable.zip) |
+| Windows x64 | [EXE](https://github.com/FullPotionStack/ElevenMD/releases/download/v0.3.12/ElevenMD-Setup-0.3.12.exe) | [ZIP](https://github.com/FullPotionStack/ElevenMD/releases/download/v0.3.12/ElevenMD-0.3.12-windows-x64-portable.zip) |
+| Linux x64 | [DEB](https://github.com/FullPotionStack/ElevenMD/releases/download/v0.3.12/ElevenMD-0.3.12-linux-x64.deb) | [tar.gz](https://github.com/FullPotionStack/ElevenMD/releases/download/v0.3.12/ElevenMD-0.3.12-linux-x64-portable.tar.gz) |
+| Linux ARM64 | [DEB](https://github.com/FullPotionStack/ElevenMD/releases/download/v0.3.12/ElevenMD-0.3.12-linux-arm64.deb) | [tar.gz](https://github.com/FullPotionStack/ElevenMD/releases/download/v0.3.12/ElevenMD-0.3.12-linux-arm64-portable.tar.gz) |
+| macOS Intel | [DMG](https://github.com/FullPotionStack/ElevenMD/releases/download/v0.3.12/ElevenMD-0.3.12-mac-x64.dmg) | [ZIP](https://github.com/FullPotionStack/ElevenMD/releases/download/v0.3.12/ElevenMD-0.3.12-mac-x64-portable.zip) |
+| macOS Apple silicon | [DMG](https://github.com/FullPotionStack/ElevenMD/releases/download/v0.3.12/ElevenMD-0.3.12-mac-arm64.dmg) | [ZIP](https://github.com/FullPotionStack/ElevenMD/releases/download/v0.3.12/ElevenMD-0.3.12-mac-arm64-portable.zip) |
 
 Alpha release. Windows builds are unsigned; macOS builds are not notarized. Your OS may show a security warning.
 
 DEB packages are for Debian/Ubuntu. On Fedora, use the portable archive; see [Linux requirements](docs/DISTRIBUTION.md#fedora-source-setup-and-reproduction). Keep portable runtime folders intact; drafts and preferences live in your user app-data directory.
 
-[Release notes and checksums](https://github.com/FullPotionStack/ElevenMD/releases/tag/v0.3.11)
+[Release notes and checksums](https://github.com/FullPotionStack/ElevenMD/releases/tag/v0.3.12)
 
 ## Before you write
 
@@ -31,7 +31,7 @@ Formatted edits normalize Markdown. Use Source to preserve exact syntax. Files m
 
 Clean tabs refresh from disk; local edits trigger a comparison instead. Deleted files stay recoverable and show File missing until you locate, save elsewhere, or explicitly recreate them.
 
-Update checks contact GitHub, without document text or logs. Approved updates use a separate helper on supported Windows, macOS and Linux installations; DEB updates request system authorization. [Update requirements](docs/DISTRIBUTION.md#update-bundles-0310-development) · [Privacy](docs/PRIVACY.md).
+Update checks contact GitHub, without document text or logs. Approved updates use a separate helper. Windows updates download a verified bundle and replace app files directly; Setup is only for initial installation. DEB updates request system authorization. [Update requirements](docs/DISTRIBUTION.md#update-bundles-0310-development) · [Privacy](docs/PRIVACY.md).
 
 ## Build from source
 
