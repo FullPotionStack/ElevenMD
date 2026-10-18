@@ -114,6 +114,69 @@ function createDocumentService(options = {}) {
     byPath.set(target, doc.id);
     return { ...doc };
   }
+  function registered(id) {
+    if (typeof id !== 'string' || !/^[0-9a-f-]{36}$/i.test(id) || !documents.has(id)) throw new Error('Unknown document capability.');
+    return documents.get(id);
+  }
+  async function observe(id) {
+    const record = registered(id);
+    let disk, status;
+    try { disk = await snapshot(record.doc.path); status = !disk ? 'missing' : disk.hash === record.hash ? 'same' : 'changed'; }
+    catch { status = 'unreadable'; }
+    const signature = `${record.doc.path}:${status}:${disk?.hash || ''}`;
+    if (record.observation?.signature !== signature) record.observation = { signature, revision: randomUUID() };
+    return { id, status, revision: record.observation.revision, ...(status === 'changed' ? { content: disk.content, eol: disk.eol, bom: disk.bom } : {}) };
+  }
+  async function inspect(ids) {
+    if (!Array.isArray(ids) || ids.length > 200 || new Set(ids).size !== ids.length) throw new Error('Invalid inspection request.');
+    const result = []; let bytes = 0;
+    for (const id of ids) {
+      const value = await observe(id); bytes += Buffer.byteLength(value.content || '', 'utf8');
+      if (bytes > 100 * 1024 * 1024) throw new Error('Inspection exceeds the session limit.');
+      result.push(value);
+    }
+    return result;
+  }
+  async function resolveExternal(payload, authorize) {
+    if (!payload || Object.keys(payload).some(k => !['id', 'revision', 'action', 'content'].includes(k)) || typeof payload.revision !== 'string' || !['reload', 'overwrite', 'recreate'].includes(payload.action)) throw new Error('Invalid resolution request.');
+    const record = registered(payload.id);
+    const reviewed = async () => {
+      const observed = await observe(payload.id);
+      if (observed.revision !== payload.revision || observed.status === 'unreadable') throw new Error('File changed again. Review the latest disk version.');
+      return observed;
+    };
+    const initial = await reviewed();
+    if (payload.action === 'reload') {
+      if (initial.status !== 'changed') throw new Error('No readable changed version to reload.');
+      const disk = await snapshot(record.doc.path);
+      if (!disk || disk.hash !== record.observation.signature.slice(record.observation.signature.lastIndexOf(':') + 1)) throw new Error('File changed again. Review it.');
+      record.doc = { ...record.doc, content: disk.content, eol: disk.eol, bom: disk.bom }; record.hash = disk.hash;
+      delete record.observation;
+      return { ...record.doc };
+    }
+    validateSave({ id: payload.id, content: payload.content, saveAs: false });
+    if (payload.action === 'recreate' && initial.status !== 'missing' || payload.action === 'overwrite' && initial.status === 'missing') throw new Error('File state changed. Review it.');
+    if (typeof authorize !== 'function') throw new Error('Native confirmation is required.');
+    if (!await authorize(payload.action, record.doc.name)) return null;
+    await reviewed();
+    const previousHash = record.hash;
+    record.hash = initial.status === 'missing' ? undefined : record.observation.signature.slice(record.observation.signature.lastIndexOf(':') + 1);
+    try { return await save({ id: payload.id, content: payload.content, saveAs: false }); }
+    finally { if (documents.get(payload.id) === record) record.hash = previousHash; }
+  }
+  async function locate(id, choosePath) {
+    const record = registered(id);
+    if (typeof choosePath !== 'function') throw new Error('A native file picker is required.');
+    const selected = await choosePath(record.doc.name); if (!selected) return null;
+    const target = await io.realpath(selected), disk = await snapshot(target);
+    if (!disk) throw new Error('File no longer exists.');
+    const owner = byPath.get(target);
+    if (owner && owner !== id) throw new Error('This file is already open in another tab.');
+    if (byPath.get(record.doc.path) === id) byPath.delete(record.doc.path);
+    record.doc = { ...record.doc, path: target, name: path.basename(target) };
+    delete record.observation; byPath.set(target, id);
+    return { ...record.doc };
+  }
   // Serialize dialogs and disk operations so each save compares against the previous save's hash.
   let queue = Promise.resolve();
   function serial(operation) {
@@ -128,6 +191,9 @@ function createDocumentService(options = {}) {
       const doc = { id: tab.id, path: tab.path, name: tab.name, content: tab.savedContent ?? tab.content, eol: tab.eol, bom: tab.bom };
       documents.set(tab.id, { doc, hash: tab.diskHash }); byPath.set(tab.path, tab.id);
     },
+    inspect: ids => serial(() => inspect(ids)),
+    resolveExternal: (payload, authorize) => serial(() => resolveExternal(payload, authorize)),
+    locate: (id, choosePath) => serial(() => locate(id, choosePath)),
     openPath: filename => serial(() => openPath(filename)),
     save: (payload, choosePath) => serial(() => save(payload, choosePath)),
   };
