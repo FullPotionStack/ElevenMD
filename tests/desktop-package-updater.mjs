@@ -39,6 +39,12 @@ try {
     await writeFile(policy, `polkit.addRule(function(action, subject) { if (action.id === "org.freedesktop.policykit.exec" && subject.user === ${JSON.stringify(os.userInfo().username)} && action.lookup("program") === "/usr/bin/apt-get") return polkit.Result.${deny ? 'NO' : 'YES'}; });\n`)
     await exec('sudo', ['install', '-m', '0644', policy, policyTarget]); await exec('sudo', ['systemctl', 'restart', 'polkit'])
   }
+  // Keep terminal receipts readable until this isolated harness has asserted them.
+  // A denied update reopens the old app, whose normal startup cleanup can remove the receipt between polls.
+  const recoveryFile = path.join(target, 'resources/app/electron/updater/recovery.cjs')
+  const recoverySource = await readFile(recoveryFile, 'utf8')
+  assert.ok(recoverySource.includes('async function cleanupCompletedJobs(context) {'))
+  await writeFile(recoveryFile, recoverySource.replace('async function cleanupCompletedJobs(context) {', 'async function cleanupCompletedJobs(context) { return;'))
   await cp(packageFile, staged)
   const sha256 = createHash('sha256').update(await readFile(staged)).digest('hex')
   const env = { ...process.env, NOTEPAD_USER_DATA_DIR: userData }; delete env.ELECTRON_RUN_AS_NODE
@@ -55,7 +61,7 @@ try {
   await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].close()).catch(() => {}); app = undefined
   const deadline = Date.now() + 120000; let result
   while (Date.now() < deadline) {
-    try { result = JSON.parse(await readFile(path.join(directory, 'result.json'), 'utf8')); break } catch (error) { if (error.code !== 'ENOENT') throw error }
+    try { result = JSON.parse(await readFile(path.join(directory, 'result.json'), 'utf8')); console.log('Native package receipt:', JSON.stringify(result)); break } catch (error) { if (error.code !== 'ENOENT') throw error }
     await new Promise(resolve => setTimeout(resolve, 250))
   }
   assert.ok(result, `No native package result; evidence: ${directory}`)
