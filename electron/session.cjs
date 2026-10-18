@@ -21,8 +21,9 @@ function createSessionService({ file, files }) {
     validate(payload);
     const state = { ...payload, tabs: payload.tabs.map(tab => {
       const registered = files.getDocument(tab.id);
-      return { ...tab, path: registered?.path || null, diskHash: registered?.diskHash || null };
+      return { ...tab, ...(registered ? { savedContent: registered.content, eol: registered.eol, bom: registered.bom } : {}), path: registered?.path || null, diskHash: registered?.diskHash || null };
     }) };
+    if (Buffer.byteLength(JSON.stringify(state), 'utf8') > MAX_BYTES) throw new Error('Session exceeds 100 MiB.');
     await fs.mkdir(path.dirname(file), { recursive: true });
     const temporary = `${file}.${randomUUID()}.tmp`;
     let handle, owned = false;

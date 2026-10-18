@@ -563,7 +563,7 @@ test('preserves a literal leading U+FEFF in text separately from the UTF-8 encod
   await files.save({ id: doc.id, content: doc.content, saveAs: false });
   assert.equal(await fs.readFile(target, 'utf8'), '\ufeff\ufefftext\n');
 });
-test('reopening a changed file returns fresh content without refreshing an old tab capability', async t => {
+test('reopening a changed file keeps its existing tab capability until reviewed synchronization', async t => {
   const dir = await fixture(t);
   const target = path.join(dir, 'reopen.md');
   await fs.writeFile(target, 'original');
@@ -571,13 +571,16 @@ test('reopening a changed file returns fresh content without refreshing an old t
   const first = await files.openPath(target);
   await fs.writeFile(target, 'external edit');
   const reopened = await files.openPath(target);
-  assert.equal(reopened.content, 'external edit');
-  assert.notEqual(reopened.id, first.id);
+  assert.equal(reopened.content, 'original');
+  assert.equal(reopened.id, first.id);
   await assert.rejects(files.save({ id: first.id, content: 'stale editor text', saveAs: false }), /changed on disk|already open/i);
+  const observed = (await files.inspect([first.id]))[0];
+  await files.resolveExternal({ id: first.id, revision: observed.revision, action: 'reload' });
+  await files.adoptExternal({ id: first.id, revision: observed.revision });
   await files.save({ id: reopened.id, content: 'fresh editor text', saveAs: false });
   assert.equal(await fs.readFile(target, 'utf8'), 'fresh editor text');
   await files.save({ id: first.id, content: 'recovered stale draft', saveAs: true }, async () => path.join(dir, 'recovery.md'));
-  assert.equal((await files.openPath(target)).id, reopened.id, 'Save As of a stale tab must not revoke the fresh tab capability');
+  assert.notEqual((await files.openPath(target)).id, reopened.id, 'Save As moves this tab capability to its new target; reopening the original is a distinct tab');
 });
 test('desktop harness can isolate userData before app readiness', async t => {
   const dir = await fixture(t);

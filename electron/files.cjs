@@ -56,13 +56,13 @@ function createDocumentService(options = {}) {
     const existing = await snapshot(canonical);
     if (!existing) throw new Error('File no longer exists.');
     const prior = documents.get(byPath.get(canonical));
-    if (prior && prior.hash === existing.hash) return { ...prior.doc };
+    if (prior) return { ...prior.doc };
     const doc = { id: randomUUID(), path: canonical, name: path.basename(canonical), content: existing.content, eol: existing.eol, bom: existing.bom };
     documents.set(doc.id, { doc, hash: existing.hash });
     byPath.set(canonical, doc.id);
     return { ...doc };
   }
-  async function save(payload, choosePath) {
+  async function save(payload, choosePath, reviewedWrite) {
     validateSave(payload);
     let record = documents.get(payload.id);
     let target = record?.doc.path;
@@ -79,7 +79,7 @@ function createDocumentService(options = {}) {
     const owner = byPath.get(target);
     if (owner && owner !== payload.id) throw new Error('This target is already open in another tab. Save that tab or choose a different file.');
     const existing = await snapshot(target);
-    const expectedHash = record && target === record.doc.path ? record.hash : existing?.hash;
+    const expectedHash = reviewedWrite ? reviewedWrite.expectedHash : record && target === record.doc.path ? record.hash : existing?.hash;
     const content = normalize(payload.content);
     const metadata = existing || record?.doc || { eol: 'LF', bom: false };
     const text = metadata.eol === 'CRLF' ? content.replace(/\n/g, '\r\n') : content;
@@ -157,10 +157,8 @@ function createDocumentService(options = {}) {
     if (typeof authorize !== 'function') throw new Error('Native confirmation is required.');
     if (!await authorize(payload.action, record.doc.name)) return null;
     await reviewed();
-    const previousHash = record.hash;
-    record.hash = initial.status === 'missing' ? undefined : record.observation.signature.slice(record.observation.signature.lastIndexOf(':') + 1);
-    try { return await save({ id: payload.id, content: payload.content, saveAs: false }); }
-    finally { if (documents.get(payload.id) === record) record.hash = previousHash; }
+    const expectedHash = initial.status === 'missing' ? undefined : record.observation.signature.slice(record.observation.signature.lastIndexOf(':') + 1);
+    return save({ id: payload.id, content: payload.content, saveAs: false }, undefined, { expectedHash });
   }
   async function adoptExternal(payload) {
     if (!payload || Object.keys(payload).some(k => !['id', 'revision'].includes(k)) || typeof payload.revision !== 'string') throw new Error('Invalid adoption request.');
