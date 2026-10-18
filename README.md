@@ -4,23 +4,24 @@ A Markdown and plain-text desktop editor for Windows, Linux, and macOS.
 
 - Formatted editing, Markdown source, and preview with tables, task lists, footnotes, and math.
 - Tabs, session recovery, find/replace, and light/dark themes.
+- Disk-change detection, recoverable refresh, and conflict comparison.
 - Local files and drafts. Optional diagnostics stay on your computer.
 
 ## Download
 
 | Platform | Installer | Portable |
 | --- | --- | --- |
-| Windows x64 | [EXE](https://github.com/FullPotionStack/ElevenMD/releases/download/v0.3.8/ElevenMD-Setup-0.3.8.exe) | [ZIP](https://github.com/FullPotionStack/ElevenMD/releases/download/v0.3.8/ElevenMD-0.3.8-windows-x64-portable.zip) |
-| Linux x64 | [DEB](https://github.com/FullPotionStack/ElevenMD/releases/download/v0.3.8/ElevenMD-0.3.8-linux-x64.deb) | [tar.gz](https://github.com/FullPotionStack/ElevenMD/releases/download/v0.3.8/ElevenMD-0.3.8-linux-x64-portable.tar.gz) |
-| Linux ARM64 | [DEB](https://github.com/FullPotionStack/ElevenMD/releases/download/v0.3.8/ElevenMD-0.3.8-linux-arm64.deb) | [tar.gz](https://github.com/FullPotionStack/ElevenMD/releases/download/v0.3.8/ElevenMD-0.3.8-linux-arm64-portable.tar.gz) |
-| macOS Intel | [DMG](https://github.com/FullPotionStack/ElevenMD/releases/download/v0.3.8/ElevenMD-0.3.8-mac-x64.dmg) | [ZIP](https://github.com/FullPotionStack/ElevenMD/releases/download/v0.3.8/ElevenMD-0.3.8-mac-x64-portable.zip) |
-| macOS Apple silicon | [DMG](https://github.com/FullPotionStack/ElevenMD/releases/download/v0.3.8/ElevenMD-0.3.8-mac-arm64.dmg) | [ZIP](https://github.com/FullPotionStack/ElevenMD/releases/download/v0.3.8/ElevenMD-0.3.8-mac-arm64-portable.zip) |
+| Windows x64 | [EXE](https://github.com/FullPotionStack/ElevenMD/releases/download/v0.3.11/ElevenMD-Setup-0.3.11.exe) | [ZIP](https://github.com/FullPotionStack/ElevenMD/releases/download/v0.3.11/ElevenMD-0.3.11-windows-x64-portable.zip) |
+| Linux x64 | [DEB](https://github.com/FullPotionStack/ElevenMD/releases/download/v0.3.11/ElevenMD-0.3.11-linux-x64.deb) | [tar.gz](https://github.com/FullPotionStack/ElevenMD/releases/download/v0.3.11/ElevenMD-0.3.11-linux-x64-portable.tar.gz) |
+| Linux ARM64 | [DEB](https://github.com/FullPotionStack/ElevenMD/releases/download/v0.3.11/ElevenMD-0.3.11-linux-arm64.deb) | [tar.gz](https://github.com/FullPotionStack/ElevenMD/releases/download/v0.3.11/ElevenMD-0.3.11-linux-arm64-portable.tar.gz) |
+| macOS Intel | [DMG](https://github.com/FullPotionStack/ElevenMD/releases/download/v0.3.11/ElevenMD-0.3.11-mac-x64.dmg) | [ZIP](https://github.com/FullPotionStack/ElevenMD/releases/download/v0.3.11/ElevenMD-0.3.11-mac-x64-portable.zip) |
+| macOS Apple silicon | [DMG](https://github.com/FullPotionStack/ElevenMD/releases/download/v0.3.11/ElevenMD-0.3.11-mac-arm64.dmg) | [ZIP](https://github.com/FullPotionStack/ElevenMD/releases/download/v0.3.11/ElevenMD-0.3.11-mac-arm64-portable.zip) |
 
 Alpha release. Windows builds are unsigned; macOS builds are not notarized. Your OS may show a security warning.
 
 DEB packages are for Debian/Ubuntu. On Fedora, use the portable archive; see [Linux requirements](docs/DISTRIBUTION.md#fedora-source-setup-and-reproduction). Keep portable runtime folders intact; drafts and preferences live in your user app-data directory.
 
-[Release notes and checksums](https://github.com/FullPotionStack/ElevenMD/releases/tag/v0.3.8)
+[Release notes and checksums](https://github.com/FullPotionStack/ElevenMD/releases/tag/v0.3.11)
 
 ## Before you write
 
@@ -28,7 +29,9 @@ Closing the window restores your tabs next time; only Save writes to document fi
 
 Formatted edits normalize Markdown. Use Source to preserve exact syntax. Files must be UTF-8, up to 10 MiB.
 
-Update checks contact GitHub, without document text or logs. Windows updates run after approval; the linked Linux/macOS release uses manual updates. [New updater development](docs/DISTRIBUTION.md#update-bundles-0310-development). [Privacy details](docs/PRIVACY.md).
+Clean tabs refresh from disk; local edits trigger a comparison instead. Deleted files stay recoverable and show File missing until you locate, save elsewhere, or explicitly recreate them.
+
+Update checks contact GitHub, without document text or logs. Approved updates use a separate helper on supported Windows, macOS and Linux installations; DEB updates request system authorization. [Update requirements](docs/DISTRIBUTION.md#update-bundles-0310-development) · [Privacy](docs/PRIVACY.md).
 
 ## Build from source
 
