@@ -28,7 +28,7 @@ test('installed Windows handoff validates the staged tree before staging a helpe
   const f = await fixture(t)
   await assert.rejects(prepareHandoff({ targetInfo: { ...f, route: 'windows-installed' }, userData: path.join(f.dir, 'profile'), staged: path.join(f.dir, 'nonexistent'), manifest: {}, directory: f.directory }))
 })
-test('installed Windows helper accepts a verified bundle tree rather than an executable package', async t => {
+test('installed Windows helper accepts a verified bundle tree rather than an executable package', { skip: process.platform !== 'win32' }, async t => {
   const f = await fixture(t), staged = path.join(f.directory, 'staged')
   await fs.mkdir(staged); await fs.writeFile(path.join(staged, f.executable), 'replacement runtime')
   const { createBundle } = require('../electron/update-bundle.cjs')
