@@ -147,12 +147,10 @@ function createDocumentService(options = {}) {
     };
     const initial = await reviewed();
     if (payload.action === 'reload') {
-      if (initial.status !== 'changed') throw new Error('No readable changed version to reload.');
+      if (!['same', 'changed'].includes(initial.status)) throw new Error('No readable version to reload.');
       const disk = await snapshot(record.doc.path);
       if (!disk || disk.hash !== record.observation.signature.slice(record.observation.signature.lastIndexOf(':') + 1)) throw new Error('File changed again. Review it.');
-      record.doc = { ...record.doc, content: disk.content, eol: disk.eol, bom: disk.bom }; record.hash = disk.hash;
-      delete record.observation;
-      return { ...record.doc };
+      return { ...record.doc, content: disk.content, eol: disk.eol, bom: disk.bom };
     }
     validateSave({ id: payload.id, content: payload.content, saveAs: false });
     if (payload.action === 'recreate' && initial.status !== 'missing' || payload.action === 'overwrite' && initial.status === 'missing') throw new Error('File state changed. Review it.');
@@ -163,6 +161,15 @@ function createDocumentService(options = {}) {
     record.hash = initial.status === 'missing' ? undefined : record.observation.signature.slice(record.observation.signature.lastIndexOf(':') + 1);
     try { return await save({ id: payload.id, content: payload.content, saveAs: false }); }
     finally { if (documents.get(payload.id) === record) record.hash = previousHash; }
+  }
+  async function adoptExternal(payload) {
+    if (!payload || Object.keys(payload).some(k => !['id', 'revision'].includes(k)) || typeof payload.revision !== 'string') throw new Error('Invalid adoption request.');
+    const record = registered(payload.id), observed = await observe(payload.id);
+    if (observed.revision !== payload.revision || !['same', 'changed'].includes(observed.status)) throw new Error('File changed again. Review it.');
+    const disk = await snapshot(record.doc.path);
+    if (!disk || disk.hash !== record.observation.signature.slice(record.observation.signature.lastIndexOf(':') + 1)) throw new Error('File changed again. Review it.');
+    record.doc = { ...record.doc, content: disk.content, eol: disk.eol, bom: disk.bom }; record.hash = disk.hash;
+    delete record.observation; return { ...record.doc };
   }
   async function locate(id, choosePath) {
     const record = registered(id);
@@ -191,6 +198,7 @@ function createDocumentService(options = {}) {
       const doc = { id: tab.id, path: tab.path, name: tab.name, content: tab.savedContent ?? tab.content, eol: tab.eol, bom: tab.bom };
       documents.set(tab.id, { doc, hash: tab.diskHash }); byPath.set(tab.path, tab.id);
     },
+    adoptExternal: payload => serial(() => adoptExternal(payload)),
     inspect: ids => serial(() => inspect(ids)),
     resolveExternal: (payload, authorize) => serial(() => resolveExternal(payload, authorize)),
     locate: (id, choosePath) => serial(() => locate(id, choosePath)),

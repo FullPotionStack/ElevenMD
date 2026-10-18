@@ -199,3 +199,16 @@ button:disabled { opacity: .55; cursor: wait; }
 #update-progress { width: 100%; height: 14px; accent-color: var(--accent); }
 #update-progress-text { color: var(--muted); font-size: 12px; }
 @media(max-width: 700px) { .app-name { display: none; } }
+/* File state is independent of the local dirty marker. */
+#file-sync-banner { padding: 8px 14px; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; background: var(--selected); border-bottom: 1px solid var(--accent); flex-shrink: 0; }
+#file-sync-banner > span { margin-right: auto; }
+#file-sync-banner button { border: 1px solid var(--border); }
+.tab[data-file-state="changed"] .dirty-dot, .tab[data-file-state="missing"] .dirty-dot, .tab[data-file-state="unreadable"] .dirty-dot { font-size: 12px; }
+#modal.file-comparison { width: min(1000px, calc(100vw - 32px)); max-height: calc(100dvh - 32px); overflow: auto; }
+.file-comparison-columns { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+#file-comparison textarea { width: 100%; font: 13px/1.5 Consolas, monospace; white-space: pre; }
+.file-line-diff { overflow: auto; max-height: 240px; padding: 12px; border: 1px solid var(--border); white-space: pre-wrap; overflow-wrap: anywhere; }
+.diff-add { background: #15803d22; border-left: 3px solid #16a34a; }
+.diff-remove { background: #b91c1c22; border-left: 3px solid #dc2626; }
+#file-comparison .dialog-actions { display: flex; flex-wrap: wrap; gap: 6px; }
+@media(max-width: 700px) { .file-comparison-columns { grid-template-columns: 1fr; } }

@@ -11,6 +11,7 @@ import { ListStyle, CompatibleTaskList } from './list-style.js'
 import 'katex/dist/katex.min.css'
 import { imageNode, loadImage, previewImages } from './images.js'
 import { setupSupport } from './support-ui.js'
+import { setupFileSync } from './file-sync.js'
 import './style.css'
 import { version as appVersion } from '../package.json'
 
@@ -22,7 +23,7 @@ root.innerHTML = `<header class="tabs" aria-label="Document tabs"><div id="tabli
 <div id="find-bar" hidden><input id="find-text" aria-label="Find text" placeholder="Find in Markdown source"><input id="replace-text" aria-label="Replace with" placeholder="Replace with"><button id="find-next">Next</button><button id="replace-one">Replace</button><button id="replace-all">Replace all</button><span id="find-result" role="status"></span><button id="close-find" aria-label="Close find">×</button></div><main><div id="rich"></div><article id="preview" aria-label="Markdown preview" hidden></article><textarea id="source" aria-label="Markdown source" spellcheck="false" hidden></textarea></main>
 <footer><span id="file-status"></span><span id="statistics"></span><span class="spacer"></span><button id="update-status" hidden aria-live="polite"></button><span id="encoding">UTF-8</span><button id="zoom" title="Reset zoom">100%</button><span>Markdown</span></footer>
 <div id="toast" role="status" hidden></div><dialog id="modal"></dialog>`
-let docs = [], activeId, untitledCount = 0, mode = 'formatted', saving = false
+let docs = [], activeId, untitledCount = 0, mode = 'formatted', saving = false, fileSync
 let sessionReady = false, autosaveTimer, booting, closingWindow = false, sessionStoragePath = ''
 const api = window.notepad
 const record = event => api?.recordDiagnostic?.(event)?.catch(() => {})
@@ -48,9 +49,9 @@ function update() {
   const tablist = $('#tablist'); tablist.replaceChildren()
   for (const doc of docs) {
     const container = document.createElement('div'); container.className = 'tab-container'
-    const button = document.createElement('button'); button.className = 'tab'; button.setAttribute('role', 'tab'); button.setAttribute('aria-selected', String(doc.id === activeId)); button.setAttribute('aria-label', doc.name); button.dataset.dirty = String(dirty(doc)); button.title = doc.path || doc.name
+    const button = document.createElement('button'); button.className = 'tab'; button.setAttribute('role', 'tab'); button.setAttribute('aria-selected', String(doc.id === activeId)); button.setAttribute('aria-label', doc.name); button.dataset.dirty = String(dirty(doc)); button.dataset.fileState = doc.external?.status || 'same'; button.title = doc.path || doc.name
     const name = document.createElement('span'); name.textContent = doc.name
-    const dot = document.createElement('span'); dot.className = 'dirty-dot'; dot.textContent = dirty(doc) ? '●' : ''; dot.setAttribute('aria-hidden', 'true')
+    const dot = document.createElement('span'); dot.className = 'dirty-dot'; dot.textContent = doc.external ? '⚠' : dirty(doc) ? '●' : ''; dot.setAttribute('aria-hidden', 'true')
     button.append(name, dot); button.onclick = () => select(doc.id)
     const close = document.createElement('button'); close.className = 'close-tab'; close.setAttribute('aria-label', `Close ${doc.name}`); close.textContent = '×'; close.onclick = () => closeDoc(doc.id)
     button.title += '\nRight-click to change tab color'
@@ -71,7 +72,8 @@ function update() {
     tablist.append(container)
   }
   const doc = active(); if (!doc) return
-  $('#file-status').textContent = doc.recovered && !doc.path ? 'Recovered draft · Save as…' : dirty(doc) ? 'Unsaved changes' : doc.path ? 'Saved' : 'New document'
+  fileSync?.render()
+  $('#file-status').textContent = fileSync?.describe(doc) || (!dirty(doc) && doc.syncNotice) || (doc.recovered && !doc.path ? 'Recovered draft · Save as…' : dirty(doc) ? 'Unsaved changes' : doc.path ? 'Saved' : 'New document')
   $('#statistics').textContent = `${doc.content.trim() ? doc.content.trim().split(/\s+/u).length : 0} words · ${doc.content.length} characters`
   $('#encoding').textContent = `UTF-8${doc.bom ? ' BOM' : ''} · ${doc.eol || 'LF'}`
   document.title = `${dirty(doc) ? '● ' : ''}${doc.name} — ElevenMD`
@@ -93,7 +95,7 @@ function tabColor(doc) {
   modal.showModal()
 }
 function sessionSnapshot() {
-  return { tabs: docs.map(d => ({ id: d.id, name: d.name, content: d.content, savedContent: d.savedContent, eol: d.eol || 'LF', bom: !!d.bom, color: /^#[0-9a-f]{6}$/i.test(d.color) ? d.color : null })), activeId: docs.length ? activeId : null, mode }
+  return { tabs: docs.map(d => ({ id: d.id, name: d.name, content: d.content, savedContent: d.savedContent, previousContent: d.previousContent ?? null, eol: d.eol || 'LF', bom: !!d.bom, color: /^#[0-9a-f]{6}$/i.test(d.color) ? d.color : null })), activeId: docs.length ? activeId : null, mode }
 }
 function checkpointSession() {
   const snapshot = sessionSnapshot()
@@ -110,6 +112,15 @@ function select(id) {
   if (doc.editorState && doc.richContent === doc.content) editor.view.updateState(doc.editorState)
   else loadRich(doc)
   setMode('formatted'); toolbarState(); update()
+}
+function refreshSyncedDocument(doc) {
+  doc.richContent = null; doc.editorState = null
+  if (active() !== doc) return
+  const start = source.selectionStart, end = source.selectionEnd, scroll = source.scrollTop
+  const selection = { from: editor.state.selection.from, to: editor.state.selection.to }
+  select(doc.id)
+  if (mode === 'source') { source.setSelectionRange(Math.min(start, doc.content.length), Math.min(end, doc.content.length)); source.scrollTop = scroll }
+  else if (mode === 'formatted') { const size = editor.state.doc.content.size; editor.commands.setTextSelection({ from: Math.min(selection.from, size), to: Math.min(selection.to, size) }) }
 }
 function loadRich(doc) {
   editor.commands.setContent(doc.content, { contentType: 'markdown', emitUpdate: false })
@@ -132,22 +143,24 @@ function addFiles(files) {
 }
 async function openFiles() {
   if (!api) return toast('Use the Windows desktop app to open and save local files.')
-  try { addFiles(await api.open()) } catch (error) { toast(error.message) }
+  try { addFiles(await api.open()); await fileSync?.check() } catch (error) { toast(error.message) }
 }
 async function saveDoc(doc = active(), saveAs = false) {
   if (saving) return false
   if (!api) { toast('Use the Windows desktop app to save local files.'); return false }
   saving = true
-  const snapshot = doc.content
   try {
+    if (!saveAs && api.inspectFiles) { await fileSync.check(); if (doc.external) { fileSync.review(doc); return false } }
+    const snapshot = doc.content
     const result = await api.save({ id: doc.id, content: snapshot, saveAs, name: doc.name })
     if (!result) return false
     doc.path = result.path; doc.name = result.name; doc.eol = result.eol || doc.eol; doc.bom = result.bom ?? doc.bom; doc.savedContent = snapshot
-    update(); toast('Saved'); return true
+    doc.external = null; doc.syncNotice = ''
+    update(); fileSync?.check(); toast('Saved'); return true
   } catch (error) { toast(error.message); return false } finally { saving = false }
 }
 async function canClose(doc) {
-  if (!dirty(doc)) return true
+  if (!dirty(doc) && !doc.external) return true
   if (!api) { toast('Unsaved changes. Open the desktop app to save your document.'); return false }
   const answer = await api.confirmClose(doc.name)
   if (answer === 'discard') return true
@@ -541,10 +554,12 @@ if (api) api.onAction(action => {
   support.onAction(action)
   if (action === 'close-window') closeWindow()
   if (action?.type === 'diagnostics-error') toast('Diagnostics storage failed; collection is disabled. Old disk logs may remain. Review Settings → Privacy & diagnostics before restarting.')
-  if (action?.type === 'opened') booting.then(() => addFiles(action.files))
+  if (action?.type === 'opened') booting.then(() => { addFiles(action.files); fileSync?.check() })
+  if (action?.type === 'files-changed') booting.then(() => fileSync?.check())
   if (action?.type === 'update-resume') $('#app').inert = false
   if (action?.type === 'checkpoint-update') booting.then(() => { $('#app').inert = true; return api.checkpointUpdate({ token: action.token, snapshot: sessionSnapshot() }) }).catch(() => { $('#app').inert = false; toast('Update stopped: could not checkpoint your tabs.') })
 })
 booting = bootstrap().catch(error => toast(`Could not restore session: ${error.message}`))
 const support = setupSupport({ api, checkpoint: checkpointSession, showMenu, toast, openSettings: settings })
-booting.then(() => support.initialize()).catch(() => {})
+fileSync = setupFileSync({ api, getDocs: () => docs, active, dirty, update, refresh: refreshSyncedDocument, checkpoint: checkpointSession, saveAs: doc => saveDoc(doc, true), modal, toast })
+booting.then(async () => { await fileSync.check(); await support.initialize() }).catch(() => {})

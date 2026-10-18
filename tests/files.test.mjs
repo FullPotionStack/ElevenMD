@@ -370,8 +370,9 @@ test('sandboxed preload exposes only fixed document APIs and strips Electron eve
   let api;
   const electron = { ipcRenderer: ipc, contextBridge: { exposeInMainWorld(name, value) { assert.equal(name, 'notepad'); api = value; } } };
   vm.runInNewContext(source, { require(name) { assert.equal(name, 'electron'); return electron; } });
-  assert.deepEqual(Object.keys(api).sort(), ['closeWindow', 'confirmClose', 'initialFiles', 'importImage', 'onAction', 'resolveImage', 'open', 'openLink', 'preferences', 'restoreSession', 'save', 'saveSession', 'sessionReady', 'setDirty', 'updatesState', 'checkUpdates', 'downloadUpdate', 'installUpdate', 'checkpointUpdate', 'openRelease', 'diagnosticsState', 'diagnosticsConsent', 'diagnosticsInspect', 'diagnosticsClear', 'diagnosticsExport', 'recordDiagnostic'].sort());
+  assert.deepEqual(Object.keys(api).sort(), ['adoptFile', 'inspectFiles', 'resolveFile', 'locateFile', 'closeWindow', 'confirmClose', 'initialFiles', 'importImage', 'onAction', 'resolveImage', 'open', 'openLink', 'preferences', 'restoreSession', 'save', 'saveSession', 'sessionReady', 'setDirty', 'updatesState', 'checkUpdates', 'downloadUpdate', 'installUpdate', 'checkpointUpdate', 'openRelease', 'diagnosticsState', 'diagnosticsConsent', 'diagnosticsInspect', 'diagnosticsClear', 'diagnosticsExport', 'recordDiagnostic'].sort());
   for (const [method, channel, args] of [
+    ['adoptFile', 'adopt-file', [{}]], ['inspectFiles', 'inspect-files', [[]]], ['resolveFile', 'resolve-file', [{}]], ['locateFile', 'locate-file', ['id']],
     ['open', 'open', []], ['initialFiles', 'initial-files', []],
     ['updatesState', 'updates-state', []], ['checkUpdates', 'updates-check', []], ['downloadUpdate', 'updates-download', []], ['installUpdate', 'updates-install', []], ['openRelease', 'open-release', []],
     ['diagnosticsState', 'diagnostics-state', []], ['diagnosticsConsent', 'diagnostics-consent', [false]], ['diagnosticsInspect', 'diagnostics-inspect', []], ['diagnosticsClear', 'diagnostics-clear', []], ['diagnosticsExport', 'diagnostics-export', []],

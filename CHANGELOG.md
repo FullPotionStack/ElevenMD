@@ -1,10 +1,16 @@
 # Changes
 
-## 0.3.10 (unreleased)
+## 0.3.11
+
+- Detect external edits, atomic replacements and missing files; refresh clean buffers without losing the previous buffer.
+- Preserve conflicting edits with a version comparison, manual merge, reviewed overwrite and explicit recreation/locate actions.
+- Includes the cross-platform updater and full-tab hover fix from the locally installed 0.3.10 build.
+
+## 0.3.10 (local build)
 
 - Adds verified update bundles and a separate updater for portable runtimes and macOS bundles, with session-ready restart confirmation and journaled rollback.
 - Adds explicit package-managed installation detection and a native DEB adapter; installed Windows copies retain the Inno backend.
-- Non-Windows replacement and package authorization remain native release-validation gates.
+- Native Windows, Linux x64/ARM64 and macOS Intel/Apple silicon update and recovery checks passed.
 
 ## 0.3.9
 

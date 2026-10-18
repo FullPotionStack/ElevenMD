@@ -139,6 +139,25 @@ async function startDesktop(electron, options = {}) {
       filters, properties: ['showOverwriteConfirmation', 'createDirectory'] });
     return result.canceled ? null : result.filePath;
   })));
+  const monitor = require('./file-monitor.cjs').createFileMonitor({ notify: () => {
+    if (!window.isDestroyed()) window.webContents.send('notepad:action', { type: 'files-changed' });
+  } });
+  window.on('closed', () => monitor.close());
+  window.on('focus', () => { if (!window.isDestroyed()) window.webContents.send('notepad:action', { type: 'files-changed' }); });
+  handle('inspect-files', async ids => {
+    const result = await files.inspect(ids);
+    monitor.setDocuments(ids.map(id => files.getDocument(id)));
+    return result;
+  });
+  handle('adopt-file', payload => files.adoptExternal(payload));
+  handle('resolve-file', payload => files.resolveExternal(payload, async (action, name) => {
+    const result = await dialog.showMessageBox(window, { type: 'warning', title: 'Resolve file changes', message: action === 'recreate' ? `Recreate ${name} on disk?` : `Replace the disk version of ${name}?`, detail: 'Your reviewed editor or merged version will be written. Cancel leaves the disk file unchanged.', buttons: ['Write file', 'Cancel'], defaultId: 1, cancelId: 1, noLink: true });
+    return result.response === 0;
+  }));
+  handle('locate-file', id => files.locate(id, async name => {
+    const result = await dialog.showOpenDialog(window, { title: `Locate ${name}`, properties: ['openFile'], filters });
+    return result.canceled ? null : result.filePaths[0];
+  }));
   handle('open-link', async value => {
     if (typeof value !== 'string' || value.length > 4096 || /[\u0000-\u0020]/.test(value)) throw new Error('Invalid link.');
     let url; try { url = new URL(value); } catch { throw new Error('Invalid link.'); }

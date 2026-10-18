@@ -69,12 +69,15 @@ jobs:
           if [[ "$TARGET_OS" == windows ]]; then
             export NOTEPAD_EXECUTABLE_PATH="$PWD/release/win-$version-unpacked/ElevenMD.exe"
             node tests/desktop-updater.mjs
+            node tests/desktop-file-sync.mjs --packaged
           elif [[ "$TARGET_OS" == mac ]]; then
             export NOTEPAD_EXECUTABLE_PATH="$PWD/release/mac-$version-$TARGET_ARCH-unpacked/ElevenMD.app/Contents/MacOS/ElevenMD"
             node tests/desktop-updater.mjs
+            node tests/desktop-file-sync.mjs --packaged
           else
             export NOTEPAD_EXECUTABLE_PATH="$PWD/release/linux-$version-$TARGET_ARCH-unpacked/elevenmd"
             xvfb-run -a node tests/desktop-updater.mjs
+            xvfb-run -a node tests/desktop-file-sync.mjs --packaged
           fi
       - name: Browser regressions
         shell: bash

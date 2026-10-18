@@ -37,8 +37,9 @@ test('tab colors round-trip while legacy sessions and empty final-tab checkpoint
   const service = require('../electron/session.cjs').createSessionService({ file: path.join(dir, 'session.json'), files })
   const tab = { id: randomUUID(), name: 'Untitled 1', content: '', savedContent: '', eol: 'LF', bom: false }
   for (const color of ['#60a5fa', '#ABCDEF', null, undefined]) {
-    const colored = color === undefined ? tab : { ...tab, color }
+    const colored = { ...tab, previousContent: 'Recoverable previous buffer', ...(color === undefined ? {} : { color }) }
     await service.save({ tabs: [colored], activeId: tab.id, mode: 'source' })
+    assert.equal((await service.load()).tabs[0].previousContent, 'Recoverable previous buffer')
     assert.equal((await service.load()).tabs[0].color, color)
   }
   for (const color of ['red', 'url(https://example.com)', '#fff', 123]) {

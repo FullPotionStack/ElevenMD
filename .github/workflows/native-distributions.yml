@@ -145,11 +145,13 @@ jobs:
             xvfb-run -a node tests/desktop-updater.mjs
             xvfb-run -a node tests/desktop-updater.mjs --crash-recovery
             xvfb-run -a node tests/desktop-updater.mjs --service
+            xvfb-run -a node tests/desktop-file-sync.mjs --packaged
           else
             export NOTEPAD_EXECUTABLE_PATH="$PWD/release/mac-$version-$TARGET_ARCH-unpacked/ElevenMD.app/Contents/MacOS/ElevenMD"
             node tests/desktop-updater.mjs
             node tests/desktop-updater.mjs --crash-recovery
             node tests/desktop-updater.mjs --service
+            node tests/desktop-file-sync.mjs --packaged
           fi
       - name: Verify real DEB upgrade and authorization denial
         if: matrix.platform == 'linux'
@@ -207,6 +209,7 @@ jobs:
           node tests/desktop-updater.mjs --crash-recovery
           node tests/desktop-updater.mjs --missing-ack
           node tests/desktop-updater.mjs --service
+          node tests/desktop-file-sync.mjs --packaged
       - name: Real installed updater with disposable per-user registrations
         run: node tests/desktop-package-updater.mjs
 

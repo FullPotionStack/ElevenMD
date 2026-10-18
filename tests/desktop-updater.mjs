@@ -59,12 +59,13 @@ try {
   if (serviceFlow) {
     await app.evaluate(({ dialog }, args) => {
       const fs = process.getBuiltinModule('node:fs/promises')
-      const stem = `ElevenMD-0.3.10-${process.platform === 'win32' ? 'windows' : process.platform === 'darwin' ? 'mac' : 'linux'}-${process.arch}-update`
-      const base = 'https://github.com/FullPotionStack/ElevenMD/releases/download/v0.3.10/'
+      const version = args.manifest.version
+      const stem = `ElevenMD-${version}-${process.platform === 'win32' ? 'windows' : process.platform === 'darwin' ? 'mac' : 'linux'}-${process.arch}-update`
+      const base = `https://github.com/FullPotionStack/ElevenMD/releases/download/v${version}/`
       const descriptor = { schema: 1, asset: stem + '.bundle.gz', size: args.size, sha256: args.sha256, manifest: args.manifest }
       const json = JSON.stringify(descriptor)
       process.__elevenmdFixtureFetch = async url => {
-        if (url.endsWith('/releases/latest')) return Response.json({ tag_name: 'v0.3.10', draft: false, prerelease: false, body: 'Controlled native service fixture', assets: [{ name: stem + '.json', browser_download_url: base + stem + '.json', size: Buffer.byteLength(json) }, { name: stem + '.bundle.gz', browser_download_url: base + stem + '.bundle.gz', size: args.size }] })
+        if (url.endsWith('/releases/latest')) return Response.json({ tag_name: `v${version}`, draft: false, prerelease: false, body: 'Controlled native service fixture', assets: [{ name: stem + '.json', browser_download_url: base + stem + '.json', size: Buffer.byteLength(json) }, { name: stem + '.bundle.gz', browser_download_url: base + stem + '.bundle.gz', size: args.size }] })
         if (url === base + stem + '.json') return new Response(json)
         if (url === base + stem + '.bundle.gz') return new Response(await fs.readFile(args.filename))
         throw new Error('Unexpected fixture transport URL')

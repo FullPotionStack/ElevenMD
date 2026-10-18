@@ -25,7 +25,9 @@ test('reload adopts only the reviewed disk revision and rejects another external
   await writeFile(f.filename, 'newer')
   await assert.rejects(f.files.resolveExternal({ id: f.doc.id, revision: change.revision, action: 'reload' }), /changed|review/i)
   const fresh = await f.inspect(), result = await f.files.resolveExternal({ id: f.doc.id, revision: fresh.revision, action: 'reload' })
-  assert.equal(result.content, 'newer'); assert.equal((await f.inspect()).status, 'same')
+  assert.equal(result.content, 'newer'); assert.equal((await f.inspect()).status, 'changed')
+  await f.files.adoptExternal({ id: f.doc.id, revision: fresh.revision })
+  assert.equal((await f.inspect()).status, 'same')
 })
 test('overwrite requires native approval and rechecks disk after approval; cancellation preserves both versions', async t => {
   const f = await fixture(t); await writeFile(f.filename, 'outside'); const change = await f.inspect()
