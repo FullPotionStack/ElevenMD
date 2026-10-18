@@ -30,12 +30,12 @@ async function readJob(filename, execPath, { recovery = false } = {}) {
   } else await canonicalDirectory(info.target);
   if (!job.reservation || job.reservation.target !== info.target || job.reservation.jobDir !== directory) throw new Error('Reservation target mismatch.');
   await assertReservation(job.reservation, { identity: !recovery });
-  if (['portable', 'mac-bundle'].includes(info.route)) {
-    job.manifest = validateManifest(job.manifest, { platform: process.platform, arch: process.arch, route: info.route });
+  if (['portable', 'mac-bundle', 'windows-installed'].includes(info.route)) {
+    job.manifest = validateManifest(job.manifest, { platform: process.platform, arch: process.arch, route: info.route === 'windows-installed' ? 'portable' : info.route });
     if (job.manifest.executable !== info.executable || job.staged !== path.join(directory, 'staged')) throw new Error('Invalid staged runtime.');
     await verifyTree(job.staged, job.manifest);
   } else {
-    if (job.staged !== path.join(directory, info.route === 'deb' ? 'payload.deb' : 'payload.exe') || !job.manifest || !/^[a-f0-9]{64}$/.test(job.manifest.sha256)) throw new Error('Invalid package job.');
+    if (job.staged !== path.join(directory, 'payload.deb') || !job.manifest || !/^[a-f0-9]{64}$/.test(job.manifest.sha256)) throw new Error('Invalid package job.');
     const hash = createHash('sha256'); for await (const bytes of createReadStream(job.staged)) hash.update(bytes);
     if (hash.digest('hex') !== job.manifest.sha256) throw new Error('Package checksum mismatch.');
   }
@@ -66,10 +66,7 @@ async function stopOwnedChild(child, { platform = process.platform, wait = waitF
     error.unsafeToRollback = true; throw error;
   }
 }
-function installerArguments(job) {
-  if (job.targetInfo.route !== 'windows-installed' || !Number.isSafeInteger(job.parentPid) || job.parentPid < 1 || !/^[A-Za-z]:\\/.test(job.targetInfo.target) || /[\x00-\x1f"<>|?*]/.test(job.targetInfo.target)) throw new Error('Invalid installed update backend.');
-  return ['/SP-', '/SILENT', '/NOCANCEL', '/NORESTART', '/NOCLOSEAPPLICATIONS', '/NORESTARTAPPLICATIONS', '/UPDATE', '/EXTERNALUPDATER', `/PARENTPID=${job.parentPid}`, `/DIR=${job.targetInfo.target}`];
-}
+
 async function restart(job, { acknowledge = true } = {}) {
   let browserPid;
   const token = randomBytes(32).toString('hex'), gate = acknowledge ? await createGate({ token, kind: 'restored', timeoutMs: 45000, onStarted: async pid => {
@@ -100,8 +97,7 @@ async function runJob(job, progress) {
   try {
     if (job.targetInfo.route === 'deb') {
       await promisify(execFile)('/usr/bin/pkexec', ['/usr/bin/apt-get', 'install', '-y', '--', job.staged], { timeout: 600000, maxBuffer: 1024 * 1024 });
-    } else if (job.targetInfo.route === 'windows-installed') {
-      await promisify(execFile)(job.staged, installerArguments(job), { timeout: 600000, maxBuffer: 1024 * 1024 });
+
     } else {
       if (job.targetInfo.route === 'mac-bundle') await promisify(execFile)('/usr/bin/codesign', ['--verify', '--deep', '--strict', job.staged]);
       await applyUpdate({ target: job.targetInfo.target, staged: job.staged, manifest: job.manifest, jobDir: job.directory, reservation: job.reservation, onProgress: p => progress(`Installing update… ${Math.floor(p.completed * 100 / p.total)}%`) });
@@ -114,7 +110,7 @@ async function runJob(job, progress) {
     progress('Update complete.');
   } catch (error) {
     if (error.unsafeToRollback) { await durable(path.join(job.directory, 'result.json'), { status: 'recovery-required', reason: 'restart-still-running' }); throw error; }
-    if (['portable', 'mac-bundle'].includes(job.targetInfo.route)) {
+    if (['portable', 'mac-bundle', 'windows-installed'].includes(job.targetInfo.route)) {
       try { await rollbackUpdate(job.directory); await restart(job, { acknowledge: false }); }
       catch (recoveryError) { await durable(path.join(job.directory, 'result.json'), { status: 'recovery-required', reason: recoveryError.code || 'recovery-failed' }); throw new Error('Update failed. Recovery files were preserved; do not delete the update folder.'); }
     } else { await releaseReservation(job.reservation); await restart(job, { acknowledge: false }).catch(() => {}); }
@@ -159,4 +155,4 @@ async function startUpdater(electron, filename, { recovery = false } = {}) {
     await app.whenReady(); electron.dialog.showErrorBox('ElevenMD update stopped', error.message); app.quit();
   }
 }
-module.exports = { readJob, runJob, startUpdater, stopOwnedChild, installerArguments };
+module.exports = { readJob, runJob, startUpdater, stopOwnedChild };

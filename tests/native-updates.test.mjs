@@ -19,28 +19,32 @@ async function fixture(t, overrides = {}) {
   const descriptor = { schema: 1, asset, size: built.size, sha256: built.sha256, manifest: built.manifest }
   const json = Buffer.from(JSON.stringify(descriptor)), bundle = await readFile(path.join(dir, 'bundle.gz'))
   const release = { tag_name: 'v0.4.0', draft: false, prerelease: false, body: 'Changes', assets: [{ name: stem + '.json', size: json.length, browser_download_url: base + stem + '.json' }, { name: asset, size: bundle.length, browser_download_url: base + asset }] }
-  const packageRoute = ['deb', 'windows-installed'].includes(overrides.route)
+  const packageRoute = overrides.route === 'deb'
   const packageName = overrides.route === 'windows-installed' ? 'ElevenMD-Setup-0.4.0.exe' : 'ElevenMD-0.4.0-linux-x64.deb'
   const sumsName = overrides.route === 'windows-installed' ? 'SHA256SUMS' : 'ElevenMD-0.4.0-linux-x64-SHA256SUMS.txt'
   const sums = Buffer.from(`${built.sha256}  ${packageName}\n`)
-  if (packageRoute) release.assets.push({ name: packageName, size: bundle.length, browser_download_url: base + packageName }, { name: sumsName, size: sums.length, browser_download_url: base + sumsName })
-  let launched = 0, prepared = 0, checkpoints = 0
+  if (packageRoute || overrides.route === 'windows-installed') release.assets.push({ name: packageName, size: bundle.length, browser_download_url: base + packageName }, { name: sumsName, size: sums.length, browser_download_url: base + sumsName })
+  const requested = []; let launched = 0, prepared = 0, checkpoints = 0
   const service = createUpdateService({ version: '0.3.9', repository, platform, downloadsDir, arch: 'x64', bundleTarget: { route: overrides.route || (platform === 'darwin' ? 'mac-bundle' : 'portable') },
-    fetchImpl: async url => { if (url.endsWith('/releases/latest')) return Response.json(release); if (url.endsWith(packageName)) return new Response(bundle); if (url.endsWith(sumsName)) return new Response(sums); if (url.endsWith('.json')) return new Response(json); if (url.endsWith('.gz')) return new Response(overrides.corrupt ? Buffer.from('corrupt') : bundle); throw new Error('Unexpected URL') },
+    fetchImpl: async url => { requested.push(url); if (url.endsWith('/releases/latest')) return Response.json(release); if (url.endsWith(packageName)) return new Response(bundle); if (url.endsWith(sumsName)) return new Response(sums); if (url.endsWith('.json')) return new Response(json); if (url.endsWith('.gz')) return new Response(overrides.corrupt ? Buffer.from('corrupt') : bundle); throw new Error('Unexpected URL') },
     confirmInstall: async () => overrides.approve !== false,
     beforeInstall: async () => { checkpoints++ },
     prepareBundle: async record => { prepared++; if (packageRoute) assert.deepEqual(await readFile(record.staged), bundle); else assert.equal(await readFile(path.join(record.staged, executable), 'utf8'), platform === 'darwin' ? 'runtime' : 'new runtime'); return { launch: async () => { launched++ }, dispose() {} } },
   })
-  return { service, release, counts: () => ({ launched, prepared, checkpoints }) }
+  return { service, release, requested, counts: () => ({ launched, prepared, checkpoints }) }
 }
 for (const platform of ['linux', 'darwin']) test(`native ${platform} downloads a matching verified bundle before checkpoint and handoff`, async t => {
   const f = await fixture(t, { platform }); assert.equal((await f.service.check()).manualDownload, false)
   assert.equal((await f.service.download()).status, 'downloaded'); assert.deepEqual(f.counts(), { launched: 0, prepared: 1, checkpoints: 0 })
   assert.equal((await f.service.install()).installed, true); assert.deepEqual(f.counts(), { launched: 1, prepared: 1, checkpoints: 1 })
 })
-for (const [platform, route] of [['win32', 'windows-installed'], ['linux', 'deb']]) test(`${route} enters the helper lifecycle using the verified native package`, async t => {
+for (const [platform, route] of [['win32', 'windows-installed'], ['linux', 'deb']]) test(`${route} uses its required payload without switching Windows to Setup`, async t => {
   const f = await fixture(t, { platform, route }); assert.equal((await f.service.check()).manualDownload, false)
   assert.equal((await f.service.download()).status, 'downloaded'); assert.equal((await f.service.install()).installed, true)
+  if (platform === 'win32') {
+    assert.ok(f.requested.some(url => url.endsWith('-update.bundle.gz')))
+    assert.ok(!f.requested.some(url => url.endsWith('.exe') || url.endsWith('SHA256SUMS')), 'Installed Windows updates must not request Setup')
+  }
   assert.deepEqual(f.counts(), { launched: 1, prepared: 1, checkpoints: 1 })
 })
 

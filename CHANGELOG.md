@@ -1,5 +1,11 @@
 # Changes
 
+## 0.3.12
+
+- Installed Windows updates now download the verified runtime bundle and use the independent updater to replace owned files directly; Setup is only for initial installation.
+- Preserve uninstall files, unrelated files and session data, with the same restart acknowledgement and journaled rollback as portable updates.
+- Fail closed when a managed Windows update has no matching bundle instead of falling back to Setup.
+
 ## 0.3.11
 
 - Detect external edits, atomic replacements and missing files; refresh clean buffers without losing the previous buffer.

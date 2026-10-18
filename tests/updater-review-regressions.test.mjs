@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 import { createRequire } from 'node:module'
 const require = createRequire(import.meta.url)
 const { checkDiskSpace } = require('../electron/update-handoff.cjs')
-const { stopOwnedChild, installerArguments } = require('../electron/updater/main.cjs')
+const { stopOwnedChild } = require('../electron/updater/main.cjs')
 const { retryFileOperation } = require('../electron/updater/transaction.cjs')
 test('transient Windows teardown locks are retried without bypassing persistent failures', async () => {
   let attempts = 0
@@ -22,9 +22,4 @@ test('an unconfirmed restarted-child exit blocks rollback instead of being swall
 })
 test('termination command failure is harmless only when child exit is independently confirmed', async () => {
   await assert.doesNotReject(stopOwnedChild({ pid: 12345, exitCode: null }, { platform: 'win32', exec: async () => { throw new Error('already exited') }, wait: async () => {} }))
-})
-test('installed Windows helper backend suppresses installer-owned restart and targets only the trusted installation', () => {
-  const args = installerArguments({ targetInfo: { target: 'C:\\Apps\\ElevenMD', route: 'windows-installed' }, parentPid: 123 })
-  assert.ok(args.includes('/EXTERNALUPDATER')); assert.ok(args.includes('/PARENTPID=123')); assert.ok(args.includes('/DIR=C:\\Apps\\ElevenMD'))
-  assert.ok(args.includes('/NOCLOSEAPPLICATIONS')); assert.ok(!args.includes('/PORTABLEUPDATE'))
 })

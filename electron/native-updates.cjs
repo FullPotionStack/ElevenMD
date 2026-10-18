@@ -32,10 +32,9 @@ function createNativeUpdates({ platform, arch, repository, downloadsDir, target,
     const bundle = asset(release, descriptor.asset, LIMITS.compressed, base);
     if (descriptor.size !== bundle.size) throw new Error('Bundle size mismatch.');
     candidate = { ...bundle, manifest, sha256: descriptor.sha256, route: target.route };
-    if (['deb', 'windows-installed'].includes(target.route)) {
-      const windows = target.route === 'windows-installed';
-      const deb = asset(release, windows ? `${require('./distribution.cjs').installerPrefix}-${initial.version}.exe` : `${prefix}-${initial.version}-linux-${arch}.deb`, LIMITS.compressed, base);
-      const sums = asset(release, windows ? 'SHA256SUMS' : `${prefix}-${initial.version}-linux-${arch}-SHA256SUMS.txt`, 128 * 1024, base);
+    if (target.route === 'deb') {
+      const deb = asset(release, `${prefix}-${initial.version}-linux-${arch}.deb`, LIMITS.compressed, base);
+      const sums = asset(release, `${prefix}-${initial.version}-linux-${arch}-SHA256SUMS.txt`, 128 * 1024, base);
       const text = await withDeadline(15000, async context => (await readBounded(await request(sums.url, context), 128 * 1024, context)).toString('utf8'));
       const matches = text.split(/\r?\n/).map(line => /^([a-f0-9]{64}) [ *]([A-Za-z0-9._-]+)$/.exec(line)).filter(row => row?.[2] === deb.name);
       if (matches.length !== 1) throw new Error('Missing package checksum.');
@@ -57,7 +56,7 @@ function createNativeUpdates({ platform, arch, repository, downloadsDir, target,
       await discard(); if (!candidate) throw new Error('No native update selected.');
       await fs.mkdir(downloadsDir, { recursive: true, mode: 0o700 });
       directory = await fs.mkdtemp(path.join(downloadsDir, 'native-update-'));
-      const filename = path.join(directory, candidate.route === 'deb' ? 'payload.deb' : candidate.route === 'windows-installed' ? 'payload.exe' : 'payload.bundle.gz');
+      const filename = path.join(directory, candidate.route === 'deb' ? 'payload.deb' : 'payload.bundle.gz');
       publish({ status: 'downloading', progress: { received: 0, total: candidate.size }, error: null });
       handle = await fs.open(filename, 'wx', 0o600); const hash = createHash('sha256');
       await withDeadline(300000, async context => {
@@ -71,7 +70,7 @@ function createNativeUpdates({ platform, arch, repository, downloadsDir, target,
         await handle.sync();
       });
       await handle.close(); handle = null;
-      const direct = ['portable', 'mac-bundle'].includes(candidate.route);
+      const direct = ['portable', 'mac-bundle', 'windows-installed'].includes(candidate.route);
       const staged = direct ? path.join(directory, 'staged') : filename;
       if (direct) await extractBundle({ filename, destination: staged, expected: candidate.manifest });
       if (typeof prepareBundle !== 'function') throw new Error('Native updater unavailable.');
@@ -91,7 +90,7 @@ function createNativeUpdates({ platform, arch, repository, downloadsDir, target,
       if (!record || state.status !== 'downloaded' || typeof confirmInstall !== 'function' || typeof beforeInstall !== 'function') throw new Error('Native installation unavailable.');
       if (await confirmInstall(snapshot()) !== true) return snapshot();
       await rehash(record.filename, record);
-      if (['portable', 'mac-bundle'].includes(record.route)) await verifyTree(record.staged, record.manifest);
+      if (['portable', 'mac-bundle', 'windows-installed'].includes(record.route)) await verifyTree(record.staged, record.manifest);
       await beforeInstall();
       await record.prepared.launch(); handedOff = true;
       return { ...snapshot(), installed: true };

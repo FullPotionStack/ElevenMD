@@ -1,7 +1,7 @@
 'use strict';
 const fs = require('node:fs/promises');
 const path = require('node:path');
-const { createUpdateLauncher } = require('./update-launcher.cjs');
+
 const { resolveUpdateTarget } = require('./update-target.cjs');
 const { prepareHandoff } = require('./update-handoff.cjs');
 const { createUpdateService } = require('./updates.cjs');
@@ -33,7 +33,7 @@ async function setupSupport({ electron, window, handle, userData, version, check
       return result.response === 0;
     },
     beforeInstall: async () => { if (typeof checkpoint !== 'function') throw new Error('Checkpoint unavailable.'); await checkpoint(); },
-    launchInstaller: createUpdateLauncher({ execPath: process.execPath, parentPid: process.pid, isPackaged: app.isPackaged }),
+
   });
   const zero = (name, callback) => handle(name, (...args) => {
     if (args.some(value => value !== undefined)) throw new Error('Invalid arguments.');

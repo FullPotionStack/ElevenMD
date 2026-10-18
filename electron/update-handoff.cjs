@@ -22,7 +22,7 @@ async function prepareHandoff({ targetInfo, userData, staged, manifest, director
   if (!['portable', 'mac-bundle', 'deb', 'windows-installed'].includes(route) || !Number.isSafeInteger(parentPid) || parentPid < 1 || !path.isAbsolute(userData)) throw new Error('Invalid updater handoff.');
   await canonicalDirectory(target); await canonicalDirectory(directory);
   if (directory === target || directory.startsWith(target + path.sep) || userData === target || userData.startsWith(target + path.sep)) throw new Error('Unsafe updater staging location.');
-  const direct = ['portable', 'mac-bundle'].includes(route);
+  const direct = ['portable', 'mac-bundle', 'windows-installed'].includes(route);
   if (direct) await verifyTree(staged, manifest);
   const identity = await captureIdentity(target, executable);
   let runtimeBytes = 0;

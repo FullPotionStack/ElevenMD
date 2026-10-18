@@ -21,7 +21,8 @@ test('installer and update launcher never close unrelated apps or request an OS 
   assert.match(installer, /^CloseApplications=no$/m)
   assert.match(installer, /^RestartApplications=no$/m)
   for (const flag of ['/UPDATE', '/NOCLOSEAPPLICATIONS', '/NORESTART', '/NORESTARTAPPLICATIONS']) assert.ok(launcher.includes(`'${flag}'`))
-  assert.match(support, /launchInstaller: createUpdateLauncher\(\{ execPath: process\.execPath, parentPid: process\.pid, isPackaged: app\.isPackaged \}\)/)
+  assert.doesNotMatch(support, /launchInstaller:|createUpdateLauncher/)
+  assert.match(support, /prepareBundle: record => prepareHandoff/)
   assert.doesNotMatch(installer, /CloseApplications=force/)
 })
 

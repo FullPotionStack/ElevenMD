@@ -120,7 +120,7 @@ function createUpdateService({ version, repository, downloadsDir, fetchImpl = gl
     }
     throw new Error('Too many redirects');
   }
-  const empty = { currentVersion: version, version: null, releaseUrl: null, notes: '', error: null, progress: null, manualDownload: platform !== 'win32' };
+  const empty = { currentVersion: version, version: null, releaseUrl: null, notes: '', error: null, progress: null, manualDownload: platform !== 'win32' || bundleTarget?.route === 'manual' };
   let state = { ...empty, status: 'idle' }, candidate = null, nativeSelected = false;
   const native = bundleTarget && ['portable', 'mac-bundle', 'deb', 'windows-installed'].includes(bundleTarget.route)
     ? require('./native-updates.cjs').createNativeUpdates({ platform, arch, repository, downloadsDir, target: bundleTarget,
@@ -160,6 +160,7 @@ function createUpdateService({ version, repository, downloadsDir, fetchImpl = gl
       if (native) {
         const next = await native.check(release, { ...empty, status: 'available', version: latest, releaseUrl: `https://github.com/${repository}/releases/tag/${tag}`, notes: plainNotes(release.body) });
         if (next) { nativeSelected = true; state = next; return getState(); }
+        if (platform === 'win32') throw new Error('A verified Windows update bundle is required.');
       }
       if (empty.manualDownload) {
         state = { ...empty, status: 'available', version: latest,

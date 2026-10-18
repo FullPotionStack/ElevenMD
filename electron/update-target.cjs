@@ -14,11 +14,12 @@ async function resolveUpdateTarget({ execPath, isPackaged, platform = process.pl
     const target = platform === 'darwin' ? path.resolve(path.dirname(execPath), '../..') : path.dirname(execPath);
     await canonicalDirectory(target);
     const result = { target, execPath, platform, arch, executable: path.relative(target, execPath).split(path.sep).join('/') };
+    let installedWindows = false;
     if (platform === 'win32') {
       const metadata = await Promise.all(['unins000.exe', 'unins000.dat'].map(name => fs.lstat(path.join(target, name)).catch(error => { if (error.code === 'ENOENT') return null; throw error; })));
       if (metadata.some(Boolean)) {
         if (!metadata.every(s => s?.isFile() && !s.isSymbolicLink())) return manual('Incomplete installer metadata.');
-        return { ...result, route: 'windows-installed' };
+        installedWindows = true;
       }
     }
     if (platform === 'linux') {
@@ -31,7 +32,7 @@ async function resolveUpdateTarget({ execPath, isPackaged, platform = process.pl
     const route = platform === 'darwin' ? 'mac-bundle' : 'portable';
     if (marker.route !== route || marker.platform !== platform || marker.arch !== arch || marker.executable !== result.executable) return manual('This copy does not have a matching updater identity.');
     await fs.access(target, fs.constants.W_OK); await fs.access(path.dirname(target), fs.constants.W_OK);
-    return { ...result, route };
+    return { ...result, route: installedWindows ? 'windows-installed' : route };
   } catch { return manual('This copy cannot be safely updated automatically. Use the matching download.'); }
 }
 module.exports = { resolveUpdateTarget };
