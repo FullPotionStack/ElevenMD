@@ -136,6 +136,19 @@ jobs:
           codesign --verify --deep --strict "$installed/ElevenMD.app"
           NOTEPAD_EXECUTABLE_PATH="$installed/ElevenMD.app/Contents/MacOS/ElevenMD" npm run test:packaging:smoke
           printf '%s\n' 'macOS artifacts are ad-hoc signed, not Developer ID signed or notarized.' >> "$GITHUB_STEP_SUMMARY"
+      - name: Verify native updater replacement and abrupt-exit recovery
+        shell: bash
+        run: |
+          version=$(node -p 'require("./package.json").version')
+          if [[ "$TARGET_PLATFORM" == linux ]]; then
+            export NOTEPAD_EXECUTABLE_PATH="$PWD/release/linux-$version-$TARGET_ARCH-unpacked/elevenmd"
+            xvfb-run -a node tests/desktop-updater.mjs
+            xvfb-run -a node tests/desktop-updater.mjs --crash-recovery
+          else
+            export NOTEPAD_EXECUTABLE_PATH="$PWD/release/mac-$version-$TARGET_ARCH-unpacked/ElevenMD.app/Contents/MacOS/ElevenMD"
+            node tests/desktop-updater.mjs
+            node tests/desktop-updater.mjs --crash-recovery
+          fi
       - name: Upload tested native assets
         uses: actions/upload-artifact@v4
         with:
