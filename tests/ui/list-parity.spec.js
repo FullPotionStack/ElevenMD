@@ -4,7 +4,7 @@ for (const sequence of [['Task list', 'Bullet list'], ['Task list', 'Numbered li
   test(`list conversion stays consistent: ${sequence.join(' → ')}`, async ({ page }) => {
     await page.goto('/')
     await page.locator('.tiptap').fill('Ship the note')
-    await page.keyboard.press('Control+a')
+    await page.keyboard.press('ControlOrMeta+a')
     for (const name of sequence) await page.getByRole('button', { name, exact: true }).click()
     const task = sequence.at(-1) === 'Task list'
     await expect(page.locator('.tiptap input[type=checkbox]')).toHaveCount(task ? 1 : 0)
@@ -78,7 +78,7 @@ test('list conversion preserves bold text, nested lists, neighboring headings an
   await expect(page.locator('#preview strong')).toHaveText('Finished')
   await expect(page.locator('#preview h1')).toHaveText('Untouched')
   await page.getByRole('button', { name: 'Formatted', exact: true }).click()
-  await page.locator('.tiptap').press('Control+z')
+  await page.locator('.tiptap').press('ControlOrMeta+z')
   await expect(page.locator('.tiptap input[type=checkbox]')).toHaveCount(3)
   await expect(page.locator('.tiptap input[type=checkbox]').first()).toBeChecked()
   await expect(page.locator('.tiptap strong')).toHaveText('Finished')
@@ -88,7 +88,7 @@ test('list conversion preserves bold text, nested lists, neighboring headings an
 test('task list alone has identical checked state in formatted and Preview', async ({ page }) => {
   await page.goto('/')
   await page.locator('.tiptap').fill('A completed task')
-  await page.keyboard.press('Control+a')
+  await page.keyboard.press('ControlOrMeta+a')
   await page.getByRole('button', { name: 'Task list', exact: true }).click()
   await page.locator('.tiptap input[type=checkbox]').check()
   const richCheckbox = await page.locator('.tiptap input[type=checkbox]').boundingBox()

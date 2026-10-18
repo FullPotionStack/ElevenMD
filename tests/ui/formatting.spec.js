@@ -3,7 +3,7 @@ import { test, expect } from '@playwright/test'
 test('formatting toolbar edits headings, bold, tasks and tables; menus expose file actions and preferences', async ({ page }) => {
   await page.goto('/')
   await page.locator('.tiptap').fill('A simple note')
-  await page.keyboard.press('Control+a')
+  await page.keyboard.press('ControlOrMeta+a')
   await page.getByRole('button', { name: 'Bold', exact: true }).click()
   await expect(page.locator('.tiptap strong')).toHaveText('A simple note')
   await page.getByRole('combobox', { name: 'Block style' }).selectOption('h1')
