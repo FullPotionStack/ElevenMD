@@ -12,6 +12,18 @@ Linux uses `dpkg-deb` and `tar`. macOS uses Xcode command-line tools and the sys
 
 Every build carries application, dependency, Electron, and Chromium notices. macOS notices travel inside the `.app`; ZIP/DMG copy tools preserve framework symlinks.
 
+## Update bundles (0.3.10 development)
+
+Native packaging emits a platform/architecture-specific `*-update.bundle.gz` and `*-update.json`. The descriptor binds version, inventory, byte length and SHA-256. Bundle payloads use a bounded internal format, not executable installation instructions. Publish every required matching asset before offering an update; do not overwrite existing release bytes.
+
+Update-capable copies download and verify before closing. A private copy of the existing Electron runtime runs the separate updater outside the installation, waits for the editor to exit, replaces the owned application files, and reopens it. Successful replacement requires the new renderer to finish restoring its session. Neither document files nor userData belong to the update inventory. This temporarily needs space for the downloaded runtime, helper copy and recovery backup.
+
+Portable copies require an explicit managed-file marker and a writable target. macOS replaces the entire signed bundle; a read-only location or mounted DMG requires manual installation. Windows installed copies continue using Inno so uninstall metadata and integrations remain consistent. DEB copies carry a separate package marker and use `pkexec`/APT with OS authorization instead of directly patching `/opt`. Unknown package formats stay manual. First migration from an older Linux/macOS copy requires installing an update-capable build manually.
+
+Portable/macOS replacement records a journal and backup before destructive operations. If an update fails, the helper attempts rollback; interrupted or failed recovery leaves evidence and backup files intact. Do not delete those files until recovery is complete. Package-manager/installer operations retain their own recovery semantics, not the portable journal's guarantees. Hashes depend on GitHub repository trust; they are not publisher signatures.
+
+`.github/workflows/updater-validation.yml` defines real portable replacement/restart checks on Windows x64, Linux x64/ARM64 and macOS Intel/Apple silicon. A Windows success does not establish Linux/macOS success, DEB authorization behavior, Gatekeeper acceptance or universal distro support. Those must be executed and reported separately before release.
+
 ## GitHub Actions
 
 `.github/workflows/native-distributions.yml` builds on Ubuntu 24.04 x64/arm64 and macOS 15 Intel/Apple silicon runners. Each lane runs packaging fixtures, the full application unit suite, native packaging, checksum verification, and actual packaged launches of both distribution formats. Linux installs the Debian package on the disposable runner and extracts the tar.gz; macOS extracts the ZIP and copies the app from a mounted DMG into runner scratch. All smoke launches use isolated per-test application data.
@@ -65,7 +77,7 @@ Chromium sandboxing stays enabled. The Debian package installs a root-owned 4755
 
 macOS builds are ad-hoc signed only. Ad-hoc verification is not Developer ID signing, notarization, or a Gatekeeper acceptance test. Downloaded/quarantined apps can require manual approval. Do not disable Gatekeeper system-wide. Public notarized releases require Apple credentials and additional release configuration.
 
-The smoke test proves native packaged startup, version and architecture, renderer visibility, sandbox/context isolation, and the main/preload prohibition on Windows installer download/install on non-Windows systems. It does not certify every OS release or test all native file dialogs, file associations, or the quarantined download experience. Linux/macOS updates use a manual release-page lane, not automatic native replacement.
+The smoke test proves native packaged startup, version and architecture, renderer visibility, sandbox/context isolation, and the main/preload prohibition on Windows installer download/install on non-Windows systems. It does not certify every OS release or test all native file dialogs, file associations, or the quarantined download experience. Published older Linux/macOS builds use the manual release-page lane. The 0.3.10 development updater is described above and requires its own native validation before release.
 
 Verify downloaded files using their matching manifest from the same release, for example inside the directory containing the artifacts:
 

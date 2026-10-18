@@ -370,7 +370,7 @@ test('sandboxed preload exposes only fixed document APIs and strips Electron eve
   let api;
   const electron = { ipcRenderer: ipc, contextBridge: { exposeInMainWorld(name, value) { assert.equal(name, 'notepad'); api = value; } } };
   vm.runInNewContext(source, { require(name) { assert.equal(name, 'electron'); return electron; } });
-  assert.deepEqual(Object.keys(api).sort(), ['closeWindow', 'confirmClose', 'initialFiles', 'importImage', 'onAction', 'resolveImage', 'open', 'openLink', 'preferences', 'restoreSession', 'save', 'saveSession', 'setDirty', 'updatesState', 'checkUpdates', 'downloadUpdate', 'installUpdate', 'checkpointUpdate', 'openRelease', 'diagnosticsState', 'diagnosticsConsent', 'diagnosticsInspect', 'diagnosticsClear', 'diagnosticsExport', 'recordDiagnostic'].sort());
+  assert.deepEqual(Object.keys(api).sort(), ['closeWindow', 'confirmClose', 'initialFiles', 'importImage', 'onAction', 'resolveImage', 'open', 'openLink', 'preferences', 'restoreSession', 'save', 'saveSession', 'sessionReady', 'setDirty', 'updatesState', 'checkUpdates', 'downloadUpdate', 'installUpdate', 'checkpointUpdate', 'openRelease', 'diagnosticsState', 'diagnosticsConsent', 'diagnosticsInspect', 'diagnosticsClear', 'diagnosticsExport', 'recordDiagnostic'].sort());
   for (const [method, channel, args] of [
     ['open', 'open', []], ['initialFiles', 'initial-files', []],
     ['updatesState', 'updates-state', []], ['checkUpdates', 'updates-check', []], ['downloadUpdate', 'updates-download', []], ['installUpdate', 'updates-install', []], ['openRelease', 'open-release', []],
@@ -378,7 +378,7 @@ test('sandboxed preload exposes only fixed document APIs and strips Electron eve
     ['recordDiagnostic', 'record-diagnostic', [{ type: 'mode_changed', mode: 'source' }]], ['checkpointUpdate', 'checkpoint-update', [{ token: 'test', snapshot: {} }]],
     ['openLink', 'open-link', ['https://example.com']],
     ['resolveImage', 'resolve-image', [{ id: randomUUID(), source: 'assets/photo.png' }]], ['importImage', 'import-image', [{ id: randomUUID() }]],
-    ['restoreSession', 'restore-session', []], ['saveSession', 'save-session', [{ tabs: [], activeId: null, mode: 'source' }]],
+    ['sessionReady', 'session-ready', []], ['restoreSession', 'restore-session', []], ['saveSession', 'save-session', [{ tabs: [], activeId: null, mode: 'source' }]],
     ['preferences', 'preferences', [{ theme: 'dark', spellcheck: false, remoteImages: false }]],
     ['save', 'save', [{ id: randomUUID(), content: 'text', saveAs: false }]],
     ['confirmClose', 'confirm-close', ['Untitled']], ['setDirty', 'set-dirty', [true]], ['closeWindow', 'close-window', []],

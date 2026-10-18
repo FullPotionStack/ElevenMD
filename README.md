@@ -28,7 +28,7 @@ Closing the window restores your tabs next time; only Save writes to document fi
 
 Formatted edits normalize Markdown. Use Source to preserve exact syntax. Files must be UTF-8, up to 10 MiB.
 
-Update checks contact GitHub, without document text or logs. Windows updates run after approval; Linux/macOS updates are manual. [Privacy details](docs/PRIVACY.md).
+Update checks contact GitHub, without document text or logs. Windows updates run after approval; the linked Linux/macOS release uses manual updates. [New updater development](docs/DISTRIBUTION.md#update-bundles-0310-development). [Privacy details](docs/PRIVACY.md).
 
 ## Build from source
 

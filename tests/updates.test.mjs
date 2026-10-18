@@ -278,9 +278,11 @@ test('download rejects digest mismatches, oversize/truncated bodies, stalled str
       return makeResponse();
     } });
     await service.check();
+    // Includes owned filesystem cleanup; the 30ms network deadline is not an aggregate disk-I/O SLA.
+    let guard;
     const state = await Promise.race([service.download(), new Promise((_, reject) => {
-      setTimeout(() => reject(new Error('Download did not respect its deadline')), 200);
-    })]);
+      guard = setTimeout(() => reject(new Error('Download did not respect its deadline')), 2000);
+    })]).finally(() => clearTimeout(guard));
     assert.equal(state.status, 'error');
     assert.equal(state.error, 'Unable to download a verified update. Please try again later.');
     assert.deepEqual(await fs.readdir(downloadsDir), []);

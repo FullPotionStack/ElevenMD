@@ -2,6 +2,8 @@
 const fs = require('node:fs/promises');
 const path = require('node:path');
 const { createUpdateLauncher } = require('./update-launcher.cjs');
+const { resolveUpdateTarget } = require('./update-target.cjs');
+const { prepareHandoff } = require('./update-handoff.cjs');
 const { createUpdateService } = require('./updates.cjs');
 const { createDiagnosticsService } = require('./diagnostics.cjs');
 const { repository: REPOSITORY } = require('./distribution.cjs');
@@ -17,7 +19,10 @@ async function setupSupport({ electron, window, handle, userData, version, check
     return false;
   });
   await record({ type: 'lifecycle', action: 'startup' });
+  const targetInfo = await resolveUpdateTarget({ execPath: process.execPath, isPackaged: app.isPackaged });
   const updates = createUpdateService({ version, repository: REPOSITORY, downloadsDir: path.join(userData, 'updates'),
+    bundleTarget: targetInfo,
+    prepareBundle: record => prepareHandoff({ targetInfo, userData, ...record }),
     onState: state => {
       if (!window.isDestroyed()) window.webContents.send('notepad:action', { type: 'update-progress', state });
     },
@@ -39,6 +44,7 @@ async function setupSupport({ electron, window, handle, userData, version, check
     const result = await updates[action]();
     await record({ type: 'update', action, outcome: result.status === 'error' ? 'failure' : action === 'install' && !result.installed ? 'cancelled' : 'success' });
     if (result.installed) { window.destroy(); app.quit(); }
+    else if (action === 'install' && !window.isDestroyed()) window.webContents.send('notepad:action', { type: 'update-resume' });
     return result;
   });
   zero('open-release', async () => {

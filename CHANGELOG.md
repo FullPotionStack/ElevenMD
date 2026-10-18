@@ -1,5 +1,11 @@
 # Changes
 
+## 0.3.10 (unreleased)
+
+- Adds verified update bundles and a separate updater for portable runtimes and macOS bundles, with session-ready restart confirmation and journaled rollback.
+- Adds explicit package-managed installation detection and a native DEB adapter; installed Windows copies retain the Inno backend.
+- Non-Windows replacement and package authorization remain native release-validation gates.
+
 ## 0.3.9
 
 - Tab colors now fill the entire tab rather than only a thin strip. Existing saved colors apply automatically.

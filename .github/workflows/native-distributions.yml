@@ -136,6 +136,28 @@ jobs:
           codesign --verify --deep --strict "$installed/ElevenMD.app"
           NOTEPAD_EXECUTABLE_PATH="$installed/ElevenMD.app/Contents/MacOS/ElevenMD" npm run test:packaging:smoke
           printf '%s\n' 'macOS artifacts are ad-hoc signed, not Developer ID signed or notarized.' >> "$GITHUB_STEP_SUMMARY"
+      - name: Verify native updater replacement and abrupt-exit recovery
+        shell: bash
+        run: |
+          version=$(node -p 'require("./package.json").version')
+          if [[ "$TARGET_PLATFORM" == linux ]]; then
+            export NOTEPAD_EXECUTABLE_PATH="$PWD/release/linux-$version-$TARGET_ARCH-unpacked/elevenmd"
+            xvfb-run -a node tests/desktop-updater.mjs
+            xvfb-run -a node tests/desktop-updater.mjs --crash-recovery
+            xvfb-run -a node tests/desktop-updater.mjs --service
+          else
+            export NOTEPAD_EXECUTABLE_PATH="$PWD/release/mac-$version-$TARGET_ARCH-unpacked/ElevenMD.app/Contents/MacOS/ElevenMD"
+            node tests/desktop-updater.mjs
+            node tests/desktop-updater.mjs --crash-recovery
+            node tests/desktop-updater.mjs --service
+          fi
+      - name: Verify real DEB upgrade and authorization denial
+        if: matrix.platform == 'linux'
+        shell: bash
+        run: |
+          sudo apt-get install -y pkexec polkitd
+          xvfb-run -a node tests/desktop-package-updater.mjs
+          xvfb-run -a node tests/desktop-package-updater.mjs --deny
       - name: Upload tested native assets
         uses: actions/upload-artifact@v4
         with:
@@ -148,10 +170,49 @@ jobs:
             release/*-${{ matrix.platform }}-${{ matrix.arch }}-portable.tar.gz
             release/*-${{ matrix.platform }}-${{ matrix.arch }}-portable.zip
             release/*-${{ matrix.platform }}-${{ matrix.arch }}-SHA256SUMS.txt
+            release/*-${{ matrix.platform }}-${{ matrix.arch }}-update.bundle.gz
+            release/*-${{ matrix.platform }}-${{ matrix.arch }}-update.json
+
+  windows-updater:
+    name: Windows installed and portable updater
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - name: Isolate scratch
+        shell: bash
+        run: printf 'HERMES_TEST_SCRATCH=%s\n' "$RUNNER_TEMP" >> "$GITHUB_ENV"
+      - name: Install runtime
+        run: |
+          npm ci
+          npm run runtime:install
+      - name: Ensure Inno Setup is available on this disposable runner
+        shell: pwsh
+        run: |
+          if (!(Test-Path 'C:/Program Files (x86)/Inno Setup 6/ISCC.exe')) { choco install innosetup -y --no-progress }
+      - name: Test and package
+        run: |
+          npm test
+          npm run installer:win
+      - name: Real portable replacement, crash recovery and missing-ready rollback
+        run: |
+          node tests/desktop-updater.mjs
+          node tests/desktop-updater.mjs --crash-recovery
+          node tests/desktop-updater.mjs --missing-ack
+          node tests/desktop-updater.mjs --service
+      - name: Real installed updater with disposable per-user registrations
+        run: node tests/desktop-package-updater.mjs
 
   attach-to-release:
     name: Attach tested native assets to existing release
-    needs: build
+    needs: [build, windows-updater]
     if: github.event_name == 'release' || (github.event_name == 'workflow_dispatch' && inputs.release_tag != '')
     runs-on: ubuntu-24.04
     timeout-minutes: 10

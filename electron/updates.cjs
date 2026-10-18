@@ -84,7 +84,7 @@ function plainNotes(value) {
  * Checksums establish release integrity, not authenticity independent of GitHub/repo trust.
  */
 function createUpdateService({ version, repository, downloadsDir, fetchImpl = globalThis.fetch,
-  requestTimeoutMs, downloadTimeoutMs, maxInstallerBytes, confirmInstall, beforeInstall, launchInstaller, onState, platform = process.platform }) {
+  requestTimeoutMs, downloadTimeoutMs, maxInstallerBytes, confirmInstall, beforeInstall, launchInstaller, onState, platform = process.platform, arch = process.arch, bundleTarget, prepareBundle }) {
   if (repository !== distribution.repository || !/^[A-Za-z0-9][A-Za-z0-9-]{0,38}\/[A-Za-z0-9][A-Za-z0-9._-]{0,99}$/.test(repository) || !/^[A-Za-z0-9][A-Za-z0-9._-]{0,99}$/.test(distribution.installerPrefix) || typeof version !== 'string' || version.length > 100 ||
       !STABLE.test(version) || /[\r\n]/.test(version) || typeof downloadsDir !== 'string' || !path.isAbsolute(downloadsDir) ||
       typeof fetchImpl !== 'function') throw new Error('Invalid update configuration.');
@@ -121,7 +121,11 @@ function createUpdateService({ version, repository, downloadsDir, fetchImpl = gl
     throw new Error('Too many redirects');
   }
   const empty = { currentVersion: version, version: null, releaseUrl: null, notes: '', error: null, progress: null, manualDownload: platform !== 'win32' };
-  let state = { ...empty, status: 'idle' }, candidate = null;
+  let state = { ...empty, status: 'idle' }, candidate = null, nativeSelected = false;
+  const native = bundleTarget && ['portable', 'mac-bundle', 'deb', 'windows-installed'].includes(bundleTarget.route)
+    ? require('./native-updates.cjs').createNativeUpdates({ platform, arch, repository, downloadsDir, target: bundleTarget,
+      request, readBounded, withDeadline, confirmInstall, beforeInstall, prepareBundle,
+      onState: next => { state = { ...next }; publish(); } }) : null;
   const getState = () => ({ ...state, progress: state.progress ? { ...state.progress } : null });
   function publish() {
     // Notifications are observation-only; a disconnected window cannot break verification.
@@ -133,7 +137,7 @@ function createUpdateService({ version, repository, downloadsDir, fetchImpl = gl
     if (previous) await fs.rm(previous.directory, { recursive: true, force: true });
   }
   async function check() {
-    state = { ...empty, status: 'checking' }; candidate = null; publish();
+    state = { ...empty, status: 'checking' }; candidate = null; nativeSelected = false; publish();
     try {
       await discardVerified();
       const release = await withDeadline(checkTimeout, async context => {
@@ -152,6 +156,10 @@ function createUpdateService({ version, repository, downloadsDir, fetchImpl = gl
           state.releaseUrl = `https://github.com/${repository}/releases/tag/${tag}`;
         }
         return getState();
+      }
+      if (native) {
+        const next = await native.check(release, { ...empty, status: 'available', version: latest, releaseUrl: `https://github.com/${repository}/releases/tag/${tag}`, notes: plainNotes(release.body) });
+        if (next) { nativeSelected = true; state = next; return getState(); }
       }
       if (empty.manualDownload) {
         state = { ...empty, status: 'available', version: latest,
@@ -178,6 +186,7 @@ function createUpdateService({ version, repository, downloadsDir, fetchImpl = gl
   }
   let verified = null;
   async function download() {
+    if (nativeSelected) return native.download();
     if (empty.manualDownload) return getState();
     if (verified && state.status === 'downloaded') return getState();
     state = { ...state, status: 'downloading', error: null, progress: null }; publish();
@@ -230,6 +239,7 @@ function createUpdateService({ version, repository, downloadsDir, fetchImpl = gl
   }
   let installed = false;
   async function install() {
+    if (nativeSelected) return native.install();
     if (empty.manualDownload) return getState();
     if (installed) return { ...getState(), installed: true };
     try {

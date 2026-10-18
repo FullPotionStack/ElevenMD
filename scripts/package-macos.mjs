@@ -3,6 +3,7 @@ import path from 'node:path'
 import { validateTarget, stageNative, run, writeChecksums, assertNewOutputs } from './cross-platform/shared.mjs'
 import { macBundleInfo } from './cross-platform/macos.mjs'
 import { createBrandAssets, iconSizes } from './generate-brand-assets.mjs'
+import { markRuntime, emitUpdateBundle } from './update-bundles.mjs'
 
 if (process.argv.includes('--help')) {
   console.log('Usage: node scripts/package-macos.mjs\nNative macOS x64/arm64 only; first run npm ci && npm run build. Produces .dmg and portable .zip in release/. Uses Xcode command-line tools, hdiutil, ditto, sips, iconutil, plutil and codesign. Builds are ad-hoc signed, NOT Developer ID signed or notarized.')
@@ -44,6 +45,7 @@ await writeFile(path.join(contents, 'Resources/START-HERE.txt'), instructions)
 // Rebranding invalidates Electron's original signature. ARM64 requires at least ad-hoc signing.
 // This is NOT a substitute for Developer ID signing + notarization:
 // https://www.electronjs.org/docs/latest/tutorial/code-signing
+await markRuntime({ root: bundle, platform: 'darwin', arch: process.arch, route: 'mac-bundle', executable: 'Contents/MacOS/ElevenMD' })
 run('/usr/bin/codesign', ['--force', '--deep', '--sign', '-', '--preserve-metadata=entitlements', bundle])
 run('/usr/bin/codesign', ['--verify', '--deep', '--strict', '--verbose=2', bundle])
 const release = path.join(root, 'release')
@@ -61,5 +63,6 @@ run('/usr/bin/ditto', ['-c', '-k', '--sequesterRsrc', '--keepParent', bundle, zi
 run('/usr/bin/unzip', ['-tq', zip])
 run('/usr/bin/hdiutil', ['create', '-volname', 'ElevenMD', '-srcfolder', image, '-format', 'UDZO', '-fs', 'HFS+', dmg])
 run('/usr/bin/hdiutil', ['verify', dmg])
-await writeChecksums([dmg, zip], sums)
+const update = await emitUpdateBundle({ root: bundle, release, prefix, version: pkg.version, repository: distribution.repository, platform: 'darwin', arch: process.arch, route: 'mac-bundle', executable: 'Contents/MacOS/ElevenMD' })
+await writeChecksums([dmg, zip, update.bundle, update.descriptor], sums)
 console.log(`macOS artifacts (ad-hoc signed; not notarized):\n${dmg}\n${zip}\n${sums}`)
