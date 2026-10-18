@@ -10,6 +10,7 @@ contextBridge.exposeInMainWorld('notepad', Object.freeze({
   importImage: value => ipcRenderer.invoke('notepad:import-image', value),
   saveSession: value => ipcRenderer.invoke('notepad:save-session', value),
   restoreSession: () => ipcRenderer.invoke('notepad:restore-session'),
+  sessionReady: () => ipcRenderer.invoke('notepad:session-ready'),
   preferences: value => ipcRenderer.invoke('notepad:preferences', value),
   confirmClose: name => ipcRenderer.invoke('notepad:confirm-close', name),
   setDirty: value => ipcRenderer.invoke('notepad:set-dirty', value),

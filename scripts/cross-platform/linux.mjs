@@ -20,6 +20,7 @@ export async function buildDebTree({ root, out, pkg, arch, repository }) {
   for (const dir of ['DEBIAN', 'opt', 'usr/bin', 'usr/share/applications', 'usr/share/icons/hicolor/256x256/apps']) await mkdir(path.join(tree, dir), { recursive: true })
   const runtime = path.join(tree, 'opt/elevenmd')
   await cp(out, runtime, { recursive: true, verbatimSymlinks: true })
+  await writeFile(path.join(runtime, '.elevenmd-package-managed'), 'deb\n')
   // dpkg-deb --root-owner-group supplies root ownership; retain Chromium's sandbox.
   await chmod(path.join(runtime, 'elevenmd'), 0o755)
   await chmod(path.join(runtime, 'chrome-sandbox'), 0o4755)

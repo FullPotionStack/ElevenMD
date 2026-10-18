@@ -6,6 +6,7 @@ import { validateDistribution } from './distribution-policy.mjs'
 import assert from 'node:assert/strict'
 import { brandWindowsExecutable } from './windows-branding.mjs'
 import { createBrandAssets } from './generate-brand-assets.mjs'
+import { markRuntime, emitUpdateBundle } from './update-bundles.mjs'
 
 if (process.platform !== 'win32') throw new Error('This packaging script targets Windows; use a Windows host.')
 const root = path.resolve(import.meta.dirname, '..')
@@ -54,4 +55,6 @@ for (const [relative, info] of Object.entries(lock.packages)) {
 notices += `\n${'='.repeat(72)}\nElectron\n${await readFile(path.join(root, 'node_modules', 'electron', 'LICENSE'), 'utf8')}\n`
 await writeFile(path.join(out, 'THIRD-PARTY-NOTICES.txt'), notices)
 await writeFile(path.join(out, 'START-HERE.txt'), `ElevenMD — Windows alpha ${pkg.version}\r\n\r\nDouble-click ElevenMD.exe. Keep this entire folder together.\r\nNo installation, account, or network connection is needed.\r\nClosing the window keeps all tabs in a private session without asking to save.\r\nOnly Save / Save As writes the Markdown files. Settings shows the session path.\r\nRemote HTTPS images require opt-in; spelling checks start off.\r\nYou can also pass a .md or .txt file as a command-line argument.\r\n\r\nThis is an unsigned local alpha.\r\nFormatted edits normalize Markdown syntax. Use Source for advanced Markdown.\r\nDraft recovery is best-effort and is not a substitute for saving files.\r\n`)
+await markRuntime({ root: out, platform: 'win32', arch: 'x64', route: 'portable', executable: 'ElevenMD.exe' })
+await emitUpdateBundle({ root: out, release: path.join(root, 'release'), prefix: distribution.installerPrefix.replace(/-Setup$/, ''), version: pkg.version, repository: distribution.repository, platform: 'win32', arch: 'x64', route: 'portable', executable: 'ElevenMD.exe' })
 console.log(`Windows app packaged: ${path.join(out, 'ElevenMD.exe')}`)

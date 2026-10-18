@@ -19,6 +19,13 @@ async function startDesktop(electron, options = {}) {
   });
   app.on('window-all-closed', () => app.quit());
   await app.whenReady();
+  if (app.isPackaged) {
+    const recovery = require('./updater/recovery.cjs');
+    const context = { userData: app.getPath('userData'), execPath: process.execPath };
+    const job = await recovery.findRecoveryJob(context);
+    if (job) { await recovery.launchRecovery(job); app.quit(); return null; }
+    await recovery.cleanupCompletedJobs(context).catch(() => {});
+  }
   Menu.setApplicationMenu(null);
   const isolatedSession = session.fromPartition('persist:notepad-md-11');
   isolatedSession.setSpellCheckerEnabled?.(false);
@@ -156,6 +163,16 @@ async function startDesktop(electron, options = {}) {
     window.setDocumentEdited(value);
   });
   handle('save-session', payload => sessions.save(payload));
+  let updateAcknowledged = false;
+  handle('session-ready', async () => {
+    if (updateAcknowledged) return true;
+    const port = env.ELEVENMD_UPDATE_ACK_PORT, token = env.ELEVENMD_UPDATE_ACK_TOKEN;
+    if (port && token) {
+      await require('./updater/protocol.cjs').notify({ port: Number(port), token, kind: 'restored' });
+      updateAcknowledged = true;
+    }
+    return true;
+  });
   handle('restore-session', async () => {
     await support.record({ type: 'lifecycle', action: 'session_restore' });
     return { ...(restoredSession || { tabs: [], activeId: null, mode: 'formatted' }), storagePath: sessions.file };
@@ -191,5 +208,9 @@ module.exports = { startDesktop };
 // Keep plain-Node imports side-effect free for unit tests, but bootstrap the real browser process.
 if (process.versions.electron && process.type === 'browser') {
   const electron = require('electron');
-  startDesktop(electron).catch(error => { electron.dialog.showErrorBox('Cannot start ElevenMD', error.message); electron.app.quit(); });
+  const recoveryIndex = process.argv.indexOf('--elevenmd-updater-recover');
+  const jobIndex = process.argv.indexOf('--elevenmd-updater-job');
+  if (recoveryIndex >= 0) require('./updater/main.cjs').startUpdater(electron, process.argv[recoveryIndex + 1], { recovery: true });
+  else if (jobIndex >= 0) require('./updater/main.cjs').startUpdater(electron, process.argv[jobIndex + 1]);
+  else startDesktop(electron).catch(error => { electron.dialog.showErrorBox('Cannot start ElevenMD', error.message); electron.app.quit(); });
 }

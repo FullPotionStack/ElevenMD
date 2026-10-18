@@ -95,7 +95,7 @@ Root: HKCU; Subkey: "Software\Classes\SystemFileAssociations\.txt\shell\OpenWith
 
 [Run]
 Filename: "{app}\{#AppExe}"; Description: "Launch ElevenMD"; Flags: postinstall nowait skipifsilent; Check: NotUpdate
-Filename: "{app}\{#AppExe}"; Flags: nowait; Check: IsUpdate
+Filename: "{app}\{#AppExe}"; Flags: nowait; Check: UpdateOwnsRestart
 Filename: "explorer.exe"; Parameters: "ms-settings:defaultapps"; Description: "Choose ElevenMD for .md and .txt in Windows Settings"; Flags: postinstall shellexec nowait skipifsilent; Tasks: defaultapps; Check: NotPortableUpdate
 
 [Code]
@@ -129,6 +129,11 @@ end;
 function IsUpdate: Boolean;
 begin
   Result := HasSwitch('/UPDATE');
+end;
+
+function UpdateOwnsRestart: Boolean;
+begin
+  Result := IsUpdate and not HasSwitch('/EXTERNALUPDATER');
 end;
 
 function NotUpdate: Boolean;

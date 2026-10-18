@@ -535,13 +535,15 @@ async function bootstrap() {
   if (docs.length) select(docs.some(d => d.id === stored?.activeId) ? stored.activeId : docs[0].id); else newDoc()
   if (api) addFiles(await api.initialFiles())
   sessionReady = true; update()
+  await api?.sessionReady?.()
 }
 if (api) api.onAction(action => {
   support.onAction(action)
   if (action === 'close-window') closeWindow()
   if (action?.type === 'diagnostics-error') toast('Diagnostics storage failed; collection is disabled. Old disk logs may remain. Review Settings → Privacy & diagnostics before restarting.')
   if (action?.type === 'opened') booting.then(() => addFiles(action.files))
-  if (action?.type === 'checkpoint-update') booting.then(() => api.checkpointUpdate({ token: action.token, snapshot: sessionSnapshot() })).catch(() => toast('Update stopped: could not checkpoint your tabs.'))
+  if (action?.type === 'update-resume') $('#app').inert = false
+  if (action?.type === 'checkpoint-update') booting.then(() => { $('#app').inert = true; return api.checkpointUpdate({ token: action.token, snapshot: sessionSnapshot() }) }).catch(() => { $('#app').inert = false; toast('Update stopped: could not checkpoint your tabs.') })
 })
 booting = bootstrap().catch(error => toast(`Could not restore session: ${error.message}`))
 const support = setupSupport({ api, checkpoint: checkpointSession, showMenu, toast, openSettings: settings })

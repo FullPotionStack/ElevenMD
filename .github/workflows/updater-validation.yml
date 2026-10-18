@@ -1,0 +1,92 @@
+name: Updater native validation
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'electron/**'
+      - 'scripts/**'
+      - 'src/**'
+      - 'tests/**'
+      - 'package*.json'
+      - '.github/workflows/updater-validation.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  updater:
+    name: Updater ${{ matrix.os }} ${{ matrix.arch }}
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: windows, arch: x64, runner: windows-latest, package: win }
+          - { os: linux, arch: x64, runner: ubuntu-24.04, package: linux }
+          - { os: linux, arch: arm64, runner: ubuntu-24.04-arm, package: linux }
+          - { os: mac, arch: x64, runner: macos-15-intel, package: mac }
+          - { os: mac, arch: arm64, runner: macos-15, package: mac }
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - name: Configure isolated scratch
+        shell: bash
+        run: |
+          printf 'HERMES_TEST_SCRATCH=%s\n' "$RUNNER_TEMP" >> "$GITHUB_ENV"
+          printf 'TMPDIR=%s\n' "$RUNNER_TEMP" >> "$GITHUB_ENV"
+      - name: Install locked dependencies and native runtime
+        run: |
+          npm ci
+          npm run runtime:install
+      - name: Unit and packaging tests
+        run: |
+          npm test
+          npm run test:packaging
+      - name: Package native runtime and update bundle
+        run: npm run package:${{ matrix.package }}
+      - name: Prepare Linux desktop
+        if: matrix.os == 'linux'
+        shell: bash
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y xvfb libnss3 libatk-bridge2.0-0 libgtk-3-0 libasound2t64
+          # Disposable CI only; retain the shipped Chromium sandbox.
+          sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+      - name: Real packaged replacement and session-ready restart
+        shell: bash
+        env:
+          TARGET_OS: ${{ matrix.os }}
+          TARGET_ARCH: ${{ matrix.arch }}
+        run: |
+          version=$(node -p 'require("./package.json").version')
+          if [[ "$TARGET_OS" == windows ]]; then
+            export NOTEPAD_EXECUTABLE_PATH="$PWD/release/win-$version-unpacked/ElevenMD.exe"
+            node tests/desktop-updater.mjs
+          elif [[ "$TARGET_OS" == mac ]]; then
+            export NOTEPAD_EXECUTABLE_PATH="$PWD/release/mac-$version-$TARGET_ARCH-unpacked/ElevenMD.app/Contents/MacOS/ElevenMD"
+            node tests/desktop-updater.mjs
+          else
+            export NOTEPAD_EXECUTABLE_PATH="$PWD/release/linux-$version-$TARGET_ARCH-unpacked/elevenmd"
+            xvfb-run -a node tests/desktop-updater.mjs
+          fi
+      - name: Browser regressions
+        shell: bash
+        run: |
+          npx playwright install chromium
+          npm run test:ui
+      - name: Preserve failure evidence
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: updater-failure-${{ matrix.os }}-${{ matrix.arch }}
+          path: |
+            test-results/
+            ${{ runner.temp }}/desktop-updater-*/job/result.json
+            ${{ runner.temp }}/desktop-updater-*/job/transaction.json

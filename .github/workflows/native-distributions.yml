@@ -148,6 +148,8 @@ jobs:
             release/*-${{ matrix.platform }}-${{ matrix.arch }}-portable.tar.gz
             release/*-${{ matrix.platform }}-${{ matrix.arch }}-portable.zip
             release/*-${{ matrix.platform }}-${{ matrix.arch }}-SHA256SUMS.txt
+            release/*-${{ matrix.platform }}-${{ matrix.arch }}-update.bundle.gz
+            release/*-${{ matrix.platform }}-${{ matrix.arch }}-update.json
 
   attach-to-release:
     name: Attach tested native assets to existing release
