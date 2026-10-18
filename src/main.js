@@ -59,6 +59,13 @@ function update() {
     button.onkeydown = event => { if (event.key === 'ContextMenu' || event.shiftKey && event.key === 'F10') colorPicker(event) }
     container.append(button, close)
     if (/^#[0-9a-f]{6}$/i.test(doc.color)) {
+      container.classList.add('tab-colored'); container.style.backgroundColor = doc.color
+      const channels = doc.color.slice(1).match(/../g).map(hex => {
+        const value = parseInt(hex, 16) / 255
+        return value <= 0.04045 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4
+      })
+      const luminance = channels[0] * 0.2126 + channels[1] * 0.7152 + channels[2] * 0.0722
+      container.style.setProperty('--tab-ink', luminance > 0.179 ? '#000000' : '#ffffff')
       const strip = document.createElement('span'); strip.className = 'tab-color-strip'; strip.style.backgroundColor = doc.color; strip.setAttribute('aria-hidden', 'true'); container.append(strip)
     }
     tablist.append(container)
@@ -73,7 +80,7 @@ function update() {
   if (sessionReady) { clearTimeout(autosaveTimer); autosaveTimer = setTimeout(() => checkpointSession().catch(error => toast(`Could not keep session: ${error.message}`)), 150) }
 }
 function tabColor(doc) {
-  modal.innerHTML = `<h2>Tab color</h2><p>Choose a color for this tab’s bottom strip.</p><div class="tab-color-palette"></div><label>Custom color<input id="tab-custom-color" type="color" aria-label="Custom color"></label><div class="dialog-actions"><button id="tab-color-cancel">Cancel</button><button id="tab-color-apply" class="primary">Apply</button></div>`
+  modal.innerHTML = `<h2>Tab color</h2><p>Choose a background color for this tab.</p><div class="tab-color-palette"></div><label>Custom color<input id="tab-custom-color" type="color" aria-label="Custom color"></label><div class="dialog-actions"><button id="tab-color-cancel">Cancel</button><button id="tab-color-apply" class="primary">Apply</button></div>`
   const apply = color => { if (docs.includes(doc)) { doc.color = color; update() }; modal.close() }
   for (const [name, color] of [['No color', null], ['Red', '#f87171'], ['Orange', '#fb923c'], ['Yellow', '#facc15'], ['Green', '#4ade80'], ['Blue', '#60a5fa'], ['Purple', '#c084fc'], ['Pink', '#f472b6']]) {
     const button = document.createElement('button'); button.textContent = name; button.onclick = () => apply(color)

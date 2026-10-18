@@ -36,7 +36,7 @@ try {
   assert.equal(state.tabs[0].color, '#60a5fa')
   assert.equal(state.tabs[0].content, 'Private fixture draft')
   app = await launch(); page = await app.firstWindow()
-  await expect(page.locator('.tab-color-strip')).toHaveCSS('background-color', 'rgb(96, 165, 250)')
+  await expect(page.locator('.tab-container.tab-colored')).toHaveCSS('background-color', 'rgb(96, 165, 250)')
   await expect(page.locator('#source')).toHaveValue('Private fixture draft')
   // Controlled native confirmation responses; not a visual native-dialog test.
   await app.evaluate(({ dialog }) => { dialog.showMessageBox = async () => ({ response: 2 }) })

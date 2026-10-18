@@ -119,6 +119,10 @@ body { font-family: 'Avenir Next', 'Trebuchet MS', system-ui, sans-serif; backgr
 .tabs { background: var(--tab-bg); padding-top: 5px; }
 .tab-container { background: transparent; border-radius: 9px 9px 0 0; }
 .tab-container:has([aria-selected="true"]) { background: var(--active-tab); box-shadow: inset 0 2px 0 var(--accent); }
+/* Hover belongs to the whole tab, not just its title button. */
+.tab-container:not(.tab-colored):hover { background: color-mix(in srgb, var(--tab-bg), white 10%); }
+.tab-container:not(.tab-colored):has([aria-selected="true"]):hover { background: color-mix(in srgb, var(--active-tab), white 10%); }
+.tab-container .tab { background: transparent; }
 .tab[aria-selected="true"] { color: #fff7ed; }
 .tab[aria-selected="false"] { color: #bdb3bf; }
 #new-tab { color: #fff7ed; }
@@ -143,6 +147,12 @@ button.primary:hover { background: var(--active-tab); }
 dialog { background: var(--paper); border-color: var(--border); }
 #toast { background: var(--chrome); border-color: var(--border); }
 @media(max-width: 700px) { :is(.tiptap, #preview), #source { padding: 24px 20px 80px; } }
+/* Custom tab colors fill the whole tab in either theme, including on hover. */
+.tab-container.tab-colored :is(.tab, .close-tab, .dirty-dot) { color: var(--tab-ink); }
+.tab-container.tab-colored .tab { background: transparent; }
+.tab-container.tab-colored .close-tab:hover { background: transparent; box-shadow: inset 0 0 0 1px var(--tab-ink); }
+.tab-container.tab-colored:has([aria-selected="true"]) { box-shadow: inset 0 3px 0 var(--tab-ink); }
+.tab-container.tab-colored button:focus-visible { outline-color: var(--tab-ink); }
 /* Settings keeps navigation and dismissal outside the scrolling section. */
 #modal.settings-dialog { width: 600px; height: min(560px, calc(100dvh - 32px)); max-height: calc(100dvh - 32px); padding: 18px; overflow: hidden; }
 #modal.settings-dialog[open] { display: flex; flex-direction: column; }

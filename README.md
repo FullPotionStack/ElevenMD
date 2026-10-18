@@ -1,72 +1,38 @@
 # ElevenMD
 
-Write Markdown and plain text in a desktop app for Windows, Linux, and macOS. Edit formatted documents, switch to the original Markdown source, or read a preview with tables, task lists, footnotes, and math.
+A Markdown and plain-text desktop editor for Windows, Linux, and macOS.
 
-![ElevenMD mark](public/elevenmd-mark.svg)
+- Formatted editing, Markdown source, and preview with tables, task lists, footnotes, and math.
+- Tabs, session recovery, find/replace, and light/dark themes.
+- Local files and drafts. Optional diagnostics stay on your computer.
 
-## Install
+## Download
 
-Download **0.3.8** directly below; you do not need Node.js or a source build to use these downloads. `x64` is Intel/AMD 64-bit; `arm64` is ARM 64-bit, including Apple silicon. ElevenMD is an alpha without publisher-certified releases. [Release notes and checksums](https://github.com/FullPotionStack/ElevenMD/releases/tag/v0.3.8).
-
-| Your computer | Installer | Portable (no installation) |
+| Platform | Installer | Portable |
 | --- | --- | --- |
-| Windows, Intel/AMD | [Download EXE](https://github.com/FullPotionStack/ElevenMD/releases/download/v0.3.8/ElevenMD-Setup-0.3.8.exe) | [Download ZIP](https://github.com/FullPotionStack/ElevenMD/releases/download/v0.3.8/ElevenMD-0.3.8-windows-x64-portable.zip) |
-| Linux, Intel/AMD | [Download DEB](https://github.com/FullPotionStack/ElevenMD/releases/download/v0.3.8/ElevenMD-0.3.8-linux-x64.deb), Debian/Ubuntu only | [Download tar.gz](https://github.com/FullPotionStack/ElevenMD/releases/download/v0.3.8/ElevenMD-0.3.8-linux-x64-portable.tar.gz) |
-| Linux, ARM64 | [Download DEB](https://github.com/FullPotionStack/ElevenMD/releases/download/v0.3.8/ElevenMD-0.3.8-linux-arm64.deb), Debian/Ubuntu only | [Download tar.gz](https://github.com/FullPotionStack/ElevenMD/releases/download/v0.3.8/ElevenMD-0.3.8-linux-arm64-portable.tar.gz) |
-| macOS, Intel | [Download DMG](https://github.com/FullPotionStack/ElevenMD/releases/download/v0.3.8/ElevenMD-0.3.8-mac-x64.dmg) | [Download ZIP](https://github.com/FullPotionStack/ElevenMD/releases/download/v0.3.8/ElevenMD-0.3.8-mac-x64-portable.zip) |
-| macOS, Apple silicon (M-series) | [Download DMG](https://github.com/FullPotionStack/ElevenMD/releases/download/v0.3.8/ElevenMD-0.3.8-mac-arm64.dmg) | [Download ZIP](https://github.com/FullPotionStack/ElevenMD/releases/download/v0.3.8/ElevenMD-0.3.8-mac-arm64-portable.zip) |
+| Windows x64 | [EXE](https://github.com/FullPotionStack/ElevenMD/releases/download/v0.3.8/ElevenMD-Setup-0.3.8.exe) | [ZIP](https://github.com/FullPotionStack/ElevenMD/releases/download/v0.3.8/ElevenMD-0.3.8-windows-x64-portable.zip) |
+| Linux x64 | [DEB](https://github.com/FullPotionStack/ElevenMD/releases/download/v0.3.8/ElevenMD-0.3.8-linux-x64.deb) | [tar.gz](https://github.com/FullPotionStack/ElevenMD/releases/download/v0.3.8/ElevenMD-0.3.8-linux-x64-portable.tar.gz) |
+| Linux ARM64 | [DEB](https://github.com/FullPotionStack/ElevenMD/releases/download/v0.3.8/ElevenMD-0.3.8-linux-arm64.deb) | [tar.gz](https://github.com/FullPotionStack/ElevenMD/releases/download/v0.3.8/ElevenMD-0.3.8-linux-arm64-portable.tar.gz) |
+| macOS Intel | [DMG](https://github.com/FullPotionStack/ElevenMD/releases/download/v0.3.8/ElevenMD-0.3.8-mac-x64.dmg) | [ZIP](https://github.com/FullPotionStack/ElevenMD/releases/download/v0.3.8/ElevenMD-0.3.8-mac-x64-portable.zip) |
+| macOS Apple silicon | [DMG](https://github.com/FullPotionStack/ElevenMD/releases/download/v0.3.8/ElevenMD-0.3.8-mac-arm64.dmg) | [ZIP](https://github.com/FullPotionStack/ElevenMD/releases/download/v0.3.8/ElevenMD-0.3.8-mac-arm64-portable.zip) |
 
-On Windows, run the installer or extract the entire ZIP and open `ElevenMD.exe`. On macOS, open the DMG and drag `ElevenMD.app` to Applications, or extract the ZIP. On Debian/Ubuntu, install the DEB with `sudo apt install ./<downloaded-file>.deb`.
+Alpha release. Windows builds are unsigned; macOS builds are not notarized. Your OS may show a security warning.
 
-**Fedora users:** choose the Linux portable tar.gz for your processor. The DEB is not a Fedora installer; there is no RPM package in this release. Extract the entire archive, open a terminal in the extracted directory, and run `./elevenmd` as your normal user, not with `sudo`. It still needs Electron's system libraries and a working sandbox; if launch fails, keep the terminal error rather than disabling the sandbox. Fedora 43 x64 source builds and newly packaged portable launches passed the [Node 22/24 CI check](https://github.com/FullPotionStack/ElevenMD/actions/runs/37413556029). That check uses a Fedora container on Ubuntu's kernel; it does not certify Fedora desktop SELinux or GPU behavior. See [Fedora setup](docs/DISTRIBUTION.md#fedora-source-setup-and-reproduction).
+DEB packages are for Debian/Ubuntu. On Fedora, use the portable archive; see [Linux requirements](docs/DISTRIBUTION.md#fedora-source-setup-and-reproduction). Keep portable runtime folders intact; drafts and preferences live in your user app-data directory.
 
-Portable means you do not need an installer; it does not put drafts and preferences beside the executable. The app stores them in your platform's per-user application data directory. Keep the whole Linux/Windows runtime directory together.
+[Release notes and checksums](https://github.com/FullPotionStack/ElevenMD/releases/tag/v0.3.8)
 
-- **Windows:** the unsigned installer may show an unknown-publisher warning. It creates a Start menu shortcut and offers optional desktop shortcuts, file registration, and an Explorer menu. It does not change existing default apps.
-- **Linux:** the `.deb` targets Debian-compatible systems and resolves shared-library dependencies through APT. The portable archive also needs Electron's system libraries and permitted unprivileged user namespaces for Chromium sandboxing. Ubuntu/AppArmor policies may require administrator configuration; do not work around this with `--no-sandbox`. The Debian package supplies a root-owned setuid sandbox.
-- **macOS:** builds are ad-hoc signed, not Apple Developer ID signed or notarized. Gatekeeper may block a downloaded app. Follow [Apple's manual approval instructions](https://support.apple.com/guide/mac-help/open-a-mac-app-from-an-unknown-developer-mh40616/mac) only if you trust the source; do not disable Gatekeeper system-wide. CI launch tests do not prove the quarantined first-download experience.
+## Before you write
 
-The Windows checksum file is `SHA256SUMS`; each Linux/macOS architecture has a separate `*-SHA256SUMS.txt` file. See [native build and verification details](docs/DISTRIBUTION.md).
+Closing the window restores your tabs next time; only Save writes to document files. Draft recovery is local plaintext, not a backup.
 
-## Writing and saving
+Formatted edits normalize Markdown. Use Source to preserve exact syntax. Files must be UTF-8, up to 10 MiB.
 
-- Use Formatted for ordinary Markdown, Source for exact syntax, and Preview for reading.
-- Open `.md`, `.markdown`, and `.txt` files. Open and Save use native dialogs.
-- Ctrl+N/O/S opens a new tab, opens a file, or saves. Ctrl+Shift+S is Save as; Ctrl+F/H is find/replace. These are currently Ctrl shortcuts on macOS too.
-- Closing the window checkpoints all tabs, including unnamed drafts. Closing the last tab with × or Ctrl+W closes the app after Save/Discard/Cancel protection; dismissed tabs are not restored. Only Save or Save as writes to your actual document files.
-- Right-click a tab (or focus it and press Shift+F10) to choose a preset/custom color for its bottom strip. Colors are remembered with the session; choose No color to remove one.
-- Edits made by another program trigger overwrite protection. Use Save as to keep both versions.
-- Light, Dark, and Auto themes are available in the menu bar. Settings controls font size, source wrapping, spelling, and remote images.
-
-Formatted edits normalize Markdown syntax. Advanced constructs that the formatted editor cannot preserve open in Source; conversion requires your approval. Private session storage is local plaintext, not an encrypted backup. Save important files separately.
-
-## Updates
-
-ElevenMD checks this repository's latest published release when it opens. You can also use **Help → Check updates**. An available update appears in the status bar; select it to read the release notes.
-
-Checking contacts GitHub and exposes the normal network information a request carries, including your IP address. It sends no document text or diagnostic logs. On Windows, download and installation require your action. The updater verifies a SHA-256 checksum from the release before offering to run the installer, and checkpoints your tabs first. Starting with 0.3.6, Windows updates show download and installation progress without the setup wizard, then reopen the app. Portable copies update in place without creating shortcuts, file associations, or uninstall entries. An older installed updater may show the wizard once while moving to 0.3.8; older portable users should close the app and replace its runtime using the portable archive. On Linux and macOS, the Updates panel opens the release page: choose the matching native download, close the app, and install or replace it manually. The app does not download or execute Windows installers on those platforms.
-
-A checksum detects a damaged or mismatched download; it is not a code signature or protection against an attacker controlling this repository. Updating a source checkout does not update an installed app.
-
-## Local diagnostics and privacy
-
-Optional diagnostics are **off until you consent**. If enabled, they keep the last 200 meaningful actions for up to 7 days on your computer. They record action categories and outcomes, not document text, typing, clipboard contents, file names or paths, URLs, search strings, screenshots, credentials, or identifying machine/user information.
-
-**Settings → Privacy & diagnostics** lets you inspect, clear, export, or disable and delete the local history. Logs are never uploaded. Built-in bug reporting is not available in this build. See [diagnostics details](docs/PRIVACY.md).
+Update checks contact GitHub, without document text or logs. Windows updates run after approval; Linux/macOS updates are manual. [Privacy details](docs/PRIVACY.md).
 
 ## Build from source
 
-Use the downloads above unless you want to develop the app. A source checkout requires **Node.js 22.12.0 or newer**; Node.js 24 LTS is recommended. Fedora 43 x64 CI passed with Node 22.23.3 and 24.21.0. Changing Node versions will not fix missing Linux libraries, an absent Electron runtime, or a missing test browser.
-
-On Fedora, install the runtime libraries first:
-
-```sh
-sudo dnf install -y nss nspr atk at-spi2-atk cups-libs libdrm dbus-libs \
-  libX11 libxcb libXcomposite libXdamage libXext libXfixes libXrandr \
-  mesa-libgbm libxkbcommon pango cairo alsa-lib gtk3 xdg-utils liberation-fonts
-```
-
-Run these commands on the target operating system as a regular user:
+Requires Node.js 22.12+ and your platform's [runtime libraries](docs/DISTRIBUTION.md).
 
 ```sh
 git clone https://github.com/FullPotionStack/ElevenMD.git
@@ -77,9 +43,7 @@ npm run build
 npm start
 ```
 
-`npm run runtime:install` downloads Electron explicitly; `npm ci` alone does not install its executable. Run `npm start` in a graphical desktop session as a regular user. Linux needs Electron's shared libraries and a working Chromium sandbox.
-
-Tests are separate from building and running. Browser tests also require a downloaded Playwright browser:
+Tests:
 
 ```sh
 npm test
@@ -87,30 +51,4 @@ npx playwright install chromium
 npm run test:ui
 ```
 
-Linux test browsers need system libraries as well. Playwright's `install --with-deps` uses supported Debian/Ubuntu dependency installation, not Fedora's DNF. The full unit suite now works on Linux/macOS without Windows-only scratch paths; OS-specific PE-resource tests run only on Windows. See [Fedora verification and limits](docs/DISTRIBUTION.md#fedora-source-setup-and-reproduction).
-
-Package on a native machine matching the desired architecture:
-
-| Target | Command | Additional tools |
-| --- | --- | --- |
-| Windows x64 | `npm run installer:win` | [Inno Setup 6](https://jrsoftware.org/isinfo.php); set `ISCC_PATH` for a nonstandard install. `npm run package:win` stages the portable runtime. |
-| Linux x64 / arm64 | `npm run package:linux` | `dpkg-deb` and `tar`; produces `.deb`, `.tar.gz`, and checksums. |
-| macOS x64 / arm64 | `npm run package:mac` | Xcode command-line tools and macOS `hdiutil`, `ditto`, `sips`, `iconutil`, `plutil`, `codesign`; produces `.dmg`, `.zip`, and checksums. |
-
-## Fork distribution requirements
-
-Before distributing a modified fork, you **MUST change the update destination to your own repository** in `electron/distribution.cjs`. Do not ship a fork that checks `FullPotionStack/ElevenMD` for updates. Set `installerPrefix` to your own installer asset prefix, and publish a matching `<prefix>-<version>.exe` plus `SHA256SUMS`.
-
-Packaging refuses a distribution whose configured repository does not match its GitHub `origin`. This is a build safeguard against accidental upstream targeting, not a restriction added to the MIT license. Deliberately removing the safeguard cannot be prevented by open-source code.
-
-Also use your own Windows installer AppId, product name, ProgIDs, and session-storage identity so your fork does not replace the official installation or share private drafts. Update your README/release links and `package.json` repository metadata. See [forking instructions](docs/FORKING.md).
-
-## Known limits
-
-The app supports UTF-8 (including BOM) and LF/CRLF line endings, with a 10 MiB document limit. Local raster images must stay within the document directory; SVG and absolute/parent-directory image paths are unsupported. Remote images require an opt-in preference. Web/mail links require confirmation before opening outside the app.
-
-Printing, drag-and-drop file opening, recent files, other text encodings, and publisher-signed releases are not implemented. Native CI targets Ubuntu 24.04 and macOS 15 on both architectures; this is not certification for every distribution, macOS version, desktop environment, or Gatekeeper configuration. Session recovery has been tested across app restarts, not destructive power-loss scenarios.
-
-## License
-
-[MIT](LICENSE). Electron, Chromium, and bundled dependencies retain their own licenses; every distribution includes their notices.
+[Packaging](docs/DISTRIBUTION.md) · [Forking](docs/FORKING.md) · [MIT license](LICENSE)

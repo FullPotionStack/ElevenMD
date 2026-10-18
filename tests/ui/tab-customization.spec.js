@@ -77,7 +77,7 @@ test('tab color strips are independent, persist on reload, and can be removed', 
   await page.getByRole('button', { name: 'Blue', exact: true }).click()
   const strip = page.locator('.tab-container').filter({ has: first }).locator('.tab-color-strip')
   await expect(strip).toHaveCSS('background-color', 'rgb(96, 165, 250)')
-  await expect(strip).toHaveCSS('height', '3px')
+  await expect(page.locator('.tab-container').filter({ has: first })).toHaveCSS('background-color', 'rgb(96, 165, 250)')
   await expect(page.getByRole('tab', { selected: true })).toHaveAttribute('aria-label', 'Untitled 2')
   await expect(page.locator('.tab-color-strip')).toHaveCount(1)
   await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('notepad-session') || '{}').tabs?.[0]?.color)).toBe('#60a5fa')

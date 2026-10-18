@@ -1,5 +1,10 @@
 # Changes
 
+## 0.3.9
+
+- Tab colors now fill the entire tab rather than only a thin strip. Existing saved colors apply automatically.
+- Tab titles, dirty indicators, close buttons and keyboard focus use contrasting black or white; active tabs retain a distinct selection marker in light and dark themes.
+
 ## 0.3.8
 
 - Includes last-tab exit and persistent tab colors from the local 0.3.7 build.
