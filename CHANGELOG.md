@@ -1,5 +1,11 @@
 # Changes
 
+## 0.3.13
+
+- Markdown and text files now have distinct folded-paper icons with MD and TXT badges. The application icon is unchanged.
+- Existing Windows installations refresh their document icons after updating, without changing default apps or custom icons.
+- Update Electron, the editor libraries, Markdown rendering and development tools to address known dependency vulnerabilities, including the compromised-certificate mitigation.
+
 ## 0.3.12
 
 - Installed Windows updates now download the verified runtime bundle and use the independent updater to replace owned files directly; Setup is only for initial installation.

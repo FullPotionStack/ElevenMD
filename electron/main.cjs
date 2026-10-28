@@ -187,10 +187,11 @@ async function startDesktop(electron, options = {}) {
   handle('session-ready', async () => {
     if (updateAcknowledged) return true;
     const port = env.ELEVENMD_UPDATE_ACK_PORT, token = env.ELEVENMD_UPDATE_ACK_TOKEN;
-    if (port && token) {
-      await require('./updater/protocol.cjs').notify({ port: Number(port), token, kind: 'restored' });
-      updateAcknowledged = true;
-    }
+    if (port && token) await require('./updater/protocol.cjs').notify({ port: Number(port), token, kind: 'restored' });
+    updateAcknowledged = true;
+    // Acknowledge restoration first; the helper cannot commit before that ACK.
+    // Do not block the renderer while native migration waits for commitment.
+    require('./document-icons.cjs').refreshDocumentIcons({ execPath: process.execPath, isPackaged: app.isPackaged, isolated: Boolean(env.NOTEPAD_USER_DATA_DIR && !(env.ELEVENMD_UPDATE_ACK_PORT && env.ELEVENMD_UPDATE_ACK_TOKEN)), waitForCommit: Boolean(port && token) }).catch(() => {});
     return true;
   });
   handle('restore-session', async () => {

@@ -38,12 +38,16 @@ try {
   await app.evaluate(({ dialog }) => { dialog.showSaveDialog = async () => ({ canceled: true }) })
   await page.keyboard.press('Control+Shift+s')
   await expect(page.getByRole('tab', { name: 'saved-as.md', exact: true })).toBeVisible()
-  await writeFile(saveAs, 'EXTERNAL EDIT MUST SURVIVE')
+  // Make the buffer dirty before the external write so the watcher cannot
+  // legitimately auto-refresh a clean document before this conflict test.
   await page.getByRole('textbox', { name: 'Markdown source' }).fill('Would overwrite externally modified file')
+  await writeFile(saveAs, 'EXTERNAL EDIT MUST SURVIVE')
   await page.keyboard.press('Control+s')
-  await expect(page.locator('#toast')).toContainText(/changed|modified|conflict/i)
+  await expect(page.getByLabel('Your version', { exact: true })).toHaveValue('Would overwrite externally modified file')
+  await expect(page.getByLabel('Disk version', { exact: true })).toHaveValue('EXTERNAL EDIT MUST SURVIVE')
   assert.equal(await readFile(saveAs, 'utf8'), 'EXTERNAL EDIT MUST SURVIVE')
   await expect(page.getByRole('tab', { name: 'saved-as.md', exact: true })).toHaveAttribute('data-dirty', 'true')
+  await page.getByRole('button', { name: 'Cancel', exact: true }).click()
   await app.evaluate(({ dialog }) => { dialog.showMessageBox = async () => ({ response: 2 }) })
   await page.keyboard.press('Control+w')
   await expect(page.getByRole('tab', { name: 'saved-as.md', exact: true })).toBeVisible()

@@ -9,6 +9,8 @@ A Markdown and plain-text desktop editor for Windows, Linux, and macOS.
 
 ## Download
 
+Published downloads are **0.3.12**. Source **0.3.13** includes dependency security updates and new Windows document icons; its binaries are not published yet.
+
 | Platform | Installer | Portable |
 | --- | --- | --- |
 | Windows x64 | [EXE](https://github.com/FullPotionStack/ElevenMD/releases/download/v0.3.12/ElevenMD-Setup-0.3.12.exe) | [ZIP](https://github.com/FullPotionStack/ElevenMD/releases/download/v0.3.12/ElevenMD-0.3.12-windows-x64-portable.zip) |
@@ -35,7 +37,7 @@ Update checks contact GitHub, without document text or logs. Approved updates us
 
 ## Build from source
 
-Requires Node.js 22.12+ and your platform's [runtime libraries](docs/DISTRIBUTION.md).
+Requires a security-patched Node.js release (22.23.4+ on 22.x or 24.22.1+ on 24.x) and your platform's [runtime libraries](docs/DISTRIBUTION.md).
 
 ```sh
 git clone https://github.com/FullPotionStack/ElevenMD.git

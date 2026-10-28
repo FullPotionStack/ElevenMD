@@ -67,10 +67,10 @@ Root: HKCU; Subkey: "Software\Classes\Applications\{#AppExe}\SupportedTypes"; Va
 Root: HKCU; Subkey: "Software\Classes\Applications\{#AppExe}\SupportedTypes"; ValueType: string; ValueName: ".markdown"; ValueData: ""; Tasks: associate; Check: NotPortableUpdate
 Root: HKCU; Subkey: "Software\Classes\Applications\{#AppExe}\SupportedTypes"; ValueType: string; ValueName: ".txt"; ValueData: ""; Tasks: associate; Check: NotPortableUpdate
 Root: HKCU; Subkey: "Software\Classes\{#AppProgIdMD}"; ValueType: string; ValueName: ""; ValueData: "ElevenMD Markdown document"; Tasks: associate; Flags: uninsdeletekey; Check: NotPortableUpdate
-Root: HKCU; Subkey: "Software\Classes\{#AppProgIdMD}\DefaultIcon"; ValueType: string; ValueName: ""; ValueData: """{app}\{#AppExe}"",0"; Tasks: associate; Check: NotPortableUpdate
+Root: HKCU; Subkey: "Software\Classes\{#AppProgIdMD}\DefaultIcon"; ValueType: string; ValueName: ""; ValueData: """{app}\resources\icons\elevenmd-markdown.ico"",0"; Tasks: associate; Check: NotPortableUpdate
 Root: HKCU; Subkey: "Software\Classes\{#AppProgIdMD}\shell\open\command"; ValueType: string; ValueName: ""; ValueData: """{app}\{#AppExe}"" ""%1"""; Tasks: associate; Check: NotPortableUpdate
 Root: HKCU; Subkey: "Software\Classes\{#AppProgIdText}"; ValueType: string; ValueName: ""; ValueData: "ElevenMD Text document"; Tasks: associate; Flags: uninsdeletekey; Check: NotPortableUpdate
-Root: HKCU; Subkey: "Software\Classes\{#AppProgIdText}\DefaultIcon"; ValueType: string; ValueName: ""; ValueData: """{app}\{#AppExe}"",0"; Tasks: associate; Check: NotPortableUpdate
+Root: HKCU; Subkey: "Software\Classes\{#AppProgIdText}\DefaultIcon"; ValueType: string; ValueName: ""; ValueData: """{app}\resources\icons\elevenmd-text.ico"",0"; Tasks: associate; Check: NotPortableUpdate
 Root: HKCU; Subkey: "Software\Classes\{#AppProgIdText}\shell\open\command"; ValueType: string; ValueName: ""; ValueData: """{app}\{#AppExe}"" ""%1"""; Tasks: associate; Check: NotPortableUpdate
 Root: HKCU; Subkey: "Software\Classes\.md\OpenWithProgids"; ValueType: string; ValueName: "{#AppProgIdMD}"; ValueData: ""; Tasks: associate; Flags: uninsdeletevalue; Check: NotPortableUpdate
 Root: HKCU; Subkey: "Software\Classes\.markdown\OpenWithProgids"; ValueType: string; ValueName: "{#AppProgIdMD}"; ValueData: ""; Tasks: associate; Flags: uninsdeletevalue; Check: NotPortableUpdate

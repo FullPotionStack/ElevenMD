@@ -1,6 +1,6 @@
 # Native distributions
 
-Build on the target operating system and architecture with Node.js 22.12.0 or newer (Node 24 LTS recommended), `npm ci`, `npm run runtime:install`, and the relevant command. Locked Vite 8.3.2 accepts `^20.19.0 || >=22.12.0`, but Electron 44.5.1's installer requires Node 22.12.0 or newer. Electron exposes `install-electron` as an explicit binary installer; `npm ci` alone does not download the runtime:
+Build on the target operating system and architecture with a current security-patched Node.js release: at least 22.23.4 on the 22.x line or 24.22.1 on the recommended 24.x LTS line. Run `npm ci`, `npm run runtime:install`, and the relevant command. Electron exposes `install-electron` as an explicit binary installer; `npm ci` alone does not download the runtime:
 
 | Host | Command | Output in `release/` |
 | --- | --- | --- |

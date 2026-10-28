@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <path d="M10 3L39 3L54 18L54 60L10 60Z" fill="#fff7ed" fill-rule="evenodd" stroke="#655d65" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M39 3L39 18L54 18Z" fill="#e5dcd2" fill-rule="evenodd"/>
+  <path d="M39 3L39 18L54 18" fill="none" fill-rule="evenodd" stroke="#655d65" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>
+  <rect x="17" y="23.15" width="27" height="1.7" rx="0" fill="#9b9091"/>
+  <rect x="17" y="29.15" width="23" height="1.7" rx="0" fill="#9b9091"/>
+  <rect x="17" y="35.15" width="27" height="1.7" rx="0" fill="#9b9091"/>
+  <rect x="14" y="42" width="45" height="17" rx="2.5" fill="#49424e"/>
+  <path d="M26.2 46.5L32.8 46.5L32.8 47.8L30.2 47.8L30.2 54.5L28.8 54.5L28.8 47.8L26.2 47.8Z" fill="#fff7ed" fill-rule="evenodd"/>
+  <path d="M33.4 46.5L35 46.5L37.1 49.5L39.2 46.5L40.8 46.5L37.9 50.4L41 54.5L39.3 54.5L37.1 51.3L34.9 54.5L33.2 54.5L36.3 50.4Z" fill="#fff7ed" fill-rule="evenodd"/>
+  <path d="M41.4 46.5L48 46.5L48 47.8L45.4 47.8L45.4 54.5L44 54.5L44 47.8L41.4 47.8Z" fill="#fff7ed" fill-rule="evenodd"/>
+</svg>
