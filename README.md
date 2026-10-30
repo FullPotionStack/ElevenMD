@@ -7,27 +7,23 @@ A Markdown and plain-text desktop editor for Windows, Linux, and macOS.
 - Disk-change detection, recoverable refresh, and conflict comparison.
 - Local files and drafts. Sanitized diagnostics stay on your computer.
 
-## Unreleased source features
-
-The 0.3.14 source adds RTF/PDF export and a Help shortcut reference. RTF and PDF are export-only: ElevenMD opens Markdown and text files, not RTF or PDF. Export chooses a separate destination and does not mark a Markdown draft saved. These features are not in the 0.3.13 downloads below.
-
 ## Download
 
-Version **0.3.13**.
+Version **0.3.14**.
 
 | Platform | Installer | Portable |
 | --- | --- | --- |
-| Windows x64 | [EXE](https://github.com/FullPotionStack/ElevenMD/releases/download/v0.3.13/ElevenMD-Setup-0.3.13.exe) | [ZIP](https://github.com/FullPotionStack/ElevenMD/releases/download/v0.3.13/ElevenMD-0.3.13-windows-x64-portable.zip) |
-| Linux x64 | [DEB](https://github.com/FullPotionStack/ElevenMD/releases/download/v0.3.13/ElevenMD-0.3.13-linux-x64.deb) | [tar.gz](https://github.com/FullPotionStack/ElevenMD/releases/download/v0.3.13/ElevenMD-0.3.13-linux-x64-portable.tar.gz) |
-| Linux ARM64 | [DEB](https://github.com/FullPotionStack/ElevenMD/releases/download/v0.3.13/ElevenMD-0.3.13-linux-arm64.deb) | [tar.gz](https://github.com/FullPotionStack/ElevenMD/releases/download/v0.3.13/ElevenMD-0.3.13-linux-arm64-portable.tar.gz) |
-| macOS Intel | [DMG](https://github.com/FullPotionStack/ElevenMD/releases/download/v0.3.13/ElevenMD-0.3.13-mac-x64.dmg) | [ZIP](https://github.com/FullPotionStack/ElevenMD/releases/download/v0.3.13/ElevenMD-0.3.13-mac-x64-portable.zip) |
-| macOS Apple silicon | [DMG](https://github.com/FullPotionStack/ElevenMD/releases/download/v0.3.13/ElevenMD-0.3.13-mac-arm64.dmg) | [ZIP](https://github.com/FullPotionStack/ElevenMD/releases/download/v0.3.13/ElevenMD-0.3.13-mac-arm64-portable.zip) |
+| Windows x64 | [EXE](https://github.com/FullPotionStack/ElevenMD/releases/download/v0.3.14/ElevenMD-Setup-0.3.14.exe) | [ZIP](https://github.com/FullPotionStack/ElevenMD/releases/download/v0.3.14/ElevenMD-0.3.14-windows-x64-portable.zip) |
+| Linux x64 | [DEB](https://github.com/FullPotionStack/ElevenMD/releases/download/v0.3.14/ElevenMD-0.3.14-linux-x64.deb) | [tar.gz](https://github.com/FullPotionStack/ElevenMD/releases/download/v0.3.14/ElevenMD-0.3.14-linux-x64-portable.tar.gz) |
+| Linux ARM64 | [DEB](https://github.com/FullPotionStack/ElevenMD/releases/download/v0.3.14/ElevenMD-0.3.14-linux-arm64.deb) | [tar.gz](https://github.com/FullPotionStack/ElevenMD/releases/download/v0.3.14/ElevenMD-0.3.14-linux-arm64-portable.tar.gz) |
+| macOS Intel | [DMG](https://github.com/FullPotionStack/ElevenMD/releases/download/v0.3.14/ElevenMD-0.3.14-mac-x64.dmg) | [ZIP](https://github.com/FullPotionStack/ElevenMD/releases/download/v0.3.14/ElevenMD-0.3.14-mac-x64-portable.zip) |
+| macOS Apple silicon | [DMG](https://github.com/FullPotionStack/ElevenMD/releases/download/v0.3.14/ElevenMD-0.3.14-mac-arm64.dmg) | [ZIP](https://github.com/FullPotionStack/ElevenMD/releases/download/v0.3.14/ElevenMD-0.3.14-mac-arm64-portable.zip) |
 
 Alpha release. Windows builds are unsigned; macOS builds are not notarized. Your OS may show a security warning.
 
 DEB packages are for Debian/Ubuntu. On Fedora, use the portable archive; see [Linux requirements](docs/DISTRIBUTION.md#fedora-source-setup-and-reproduction). Keep portable runtime folders intact; drafts and preferences live in your user app-data directory.
 
-[Release notes and checksums](https://github.com/FullPotionStack/ElevenMD/releases/tag/v0.3.13)
+[Release notes and checksums](https://github.com/FullPotionStack/ElevenMD/releases/tag/v0.3.14)
 
 ## Before you write
 
