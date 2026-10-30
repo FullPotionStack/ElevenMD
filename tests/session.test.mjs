@@ -31,6 +31,25 @@ test('private session keeps unnamed and edited file tabs without writing origina
   await restoredFiles.save({ id: opened.id, content: restored.tabs[0].content, saveAs: false })
   assert.equal(await readFile(target, 'utf8'), '# Edited, not saved\n')
 })
+test('a new session checkpoint cannot register a PDF tab', async t => {
+  const dir = await mkdtemp(path.join(scratch, 'notepad-pdf-session-')); t.after(() => rm(dir, { recursive: true, force: true }))
+  const files = require('../electron/files.cjs').createDocumentService()
+  const service = require('../electron/session.cjs').createSessionService({ file: path.join(dir, 'session.json'), files })
+  const content = Buffer.from('%PDF-test').toString('base64')
+  const tab = { id: randomUUID(), name: 'file.pdf', content, savedContent: content, eol: 'LF', bom: false, kind: 'pdf' }
+  await assert.rejects(service.save({ tabs: [tab], activeId: tab.id, mode: 'preview' }), /not supported/i)
+  assert.equal(await service.load(), null)
+})
+test('an RTF conversion warning survives a session restart without a writable file path', async t => {
+  const dir = await mkdtemp(path.join(scratch, 'notepad-rtf-session-')); t.after(() => rm(dir, { recursive: true, force: true }))
+  const files = require('../electron/files.cjs').createDocumentService()
+  const service = require('../electron/session.cjs').createSessionService({ file: path.join(dir, 'session.json'), files })
+  const tab = { id: randomUUID(), name: 'imported.md', content: 'Converted', savedContent: null, eol: 'LF', bom: false, rtfWarning: true }
+  await service.save({ tabs: [tab], activeId: tab.id, mode: 'preview' })
+  const restored = await service.load()
+  assert.equal(restored.tabs[0].rtfWarning, true)
+  assert.equal(restored.tabs[0].path, null)
+})
 test('tab colors round-trip while legacy sessions and empty final-tab checkpoints remain valid', async t => {
   const dir = await mkdtemp(path.join(scratch, 'notepad-colors-')); t.after(() => rm(dir, { recursive: true, force: true }))
   const files = require('../electron/files.cjs').createDocumentService()

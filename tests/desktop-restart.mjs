@@ -30,4 +30,9 @@ try {
   await expect(page.getByRole('textbox', { name: 'Markdown source' })).toHaveValue('# Draft across an actual restart')
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark')
   console.log('PASS: unsaved draft and theme survive complete packaged-app restart')
-} finally { await stop(); await rm(temp, { recursive: true, force: true }) }
+} catch (error) {
+  console.error('Restart test failed before cleanup:', error)
+  throw error
+} finally {
+  try { await stop() } finally { await closeTestApp(app); await rm(temp, { recursive: true, force: true }) }
+}

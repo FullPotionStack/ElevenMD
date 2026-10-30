@@ -11,6 +11,7 @@
 #define AppId "{{6C0E4662-46BB-4C4A-B40C-6C11A157E911}}"
 #define AppProgIdMD "ElevenMD.Markdown"
 #define AppProgIdText "ElevenMD.Text"
+
 ; Optional build-only paths let verification use scratch without replacing release assets.
 #ifndef AppSourceDir
   #define AppSourceDir "..\release\win-" + AppVersion + "-unpacked"
@@ -82,6 +83,7 @@ Root: HKCU; Subkey: "Software\{#AppName}\Capabilities\FileAssociations"; ValueTy
 Root: HKCU; Subkey: "Software\{#AppName}\Capabilities\FileAssociations"; ValueType: string; ValueName: ".markdown"; ValueData: "{#AppProgIdMD}"; Tasks: associate; Check: NotPortableUpdate
 Root: HKCU; Subkey: "Software\{#AppName}\Capabilities\FileAssociations"; ValueType: string; ValueName: ".txt"; ValueData: "{#AppProgIdText}"; Tasks: associate; Check: NotPortableUpdate
 Root: HKCU; Subkey: "Software\RegisteredApplications"; ValueType: string; ValueName: "ElevenMD"; ValueData: "Software\ElevenMD\Capabilities"; Tasks: associate; Flags: uninsdeletevalue; Check: NotPortableUpdate
+
 ; Icon is a named VALUE on the verb, not an Icon subkey.
 Root: HKCU; Subkey: "Software\Classes\SystemFileAssociations\.md\shell\OpenWithElevenMD"; ValueType: string; ValueName: ""; ValueData: "Open with ElevenMD"; Tasks: filemenu; Flags: uninsdeletekey; Check: NotPortableUpdate
 Root: HKCU; Subkey: "Software\Classes\SystemFileAssociations\.md\shell\OpenWithElevenMD"; ValueType: string; ValueName: "Icon"; ValueData: """{app}\{#AppExe}"",0"; Tasks: filemenu; Check: NotPortableUpdate

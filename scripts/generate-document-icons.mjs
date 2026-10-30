@@ -16,6 +16,7 @@ const glyph = (contours, fill) => ({ contours, fill, width: 0 })
 
 function artwork(kind) {
   const markdown = kind === 'markdown'
+  const readonly = kind === 'rtf' || kind === 'pdf'
   const shapes = [
     polygon([[10, 3], [39, 3], [54, 18], [54, 60], [10, 60]], colors.paper, colors.outline, 1.5),
     polygon([[39, 3], [39, 18], [54, 18]], colors.fold),
@@ -23,7 +24,7 @@ function artwork(kind) {
   ]
   const strokes = markdown ? [[24, 34, 3], [31, 44, 1.7], [36, 38, 1.7]] : [[24, 44, 1.7], [30, 40, 1.7], [36, 44, 1.7]]
   for (const [y, end, width] of strokes) shapes.push(rect(17, y - width / 2, end - 17, width, markdown && y === 24 ? colors.charcoal : colors.muted))
-  shapes.push(rect(14, 42, 45, 17, markdown ? colors.coral : colors.charcoal, 2.5))
+  shapes.push(rect(14, 42, 45, 17, markdown ? colors.coral : readonly ? (kind === 'rtf' ? '#805a96' : '#ba5149') : colors.charcoal, 2.5))
   if (markdown) {
     shapes.push(glyph([[[26, 54.8], [26, 46.2], [27.6, 46.2], [30.7, 52.2], [33.8, 46.2], [35.4, 46.2], [35.4, 54.8], [34, 54.8], [34, 48.4], [31.3, 53.6], [30.1, 53.6], [27.4, 48.4], [27.4, 54.8]]], colors.ink))
     // D uses nested contours (even-odd fill) with a smoothly sampled elliptical bowl.
@@ -35,19 +36,32 @@ function artwork(kind) {
       [[37.4, 46.2], ...bowl(41, 50.5, 4.8, 4.3), [37.4, 54.8]],
       [[38.8, 47.5], ...bowl(41, 50.5, 3.3, 3), [38.8, 53.5]],
     ], colors.ink))
-  } else {
+  } else if (!readonly) {
     // Compact TXT capitals, centered in the same wide badge as MD.
     const tee = x => [[x, 46.5], [x + 6.6, 46.5], [x + 6.6, 47.8], [x + 4, 47.8], [x + 4, 54.5], [x + 2.6, 54.5], [x + 2.6, 47.8], [x, 47.8]]
     shapes.push(glyph([tee(26.2)], colors.paper))
     shapes.push(glyph([[[33.4, 46.5], [35, 46.5], [37.1, 49.5], [39.2, 46.5], [40.8, 46.5], [37.9, 50.4], [41, 54.5], [39.3, 54.5], [37.1, 51.3], [34.9, 54.5], [33.2, 54.5], [36.3, 50.4]]], colors.paper))
     shapes.push(glyph([tee(41.4)], colors.paper))
+  } else {
+    const letters = kind === 'rtf' ? ['R', 'T', 'F'] : ['P', 'D', 'F']
+    const strokes = {
+      R: [[[0,0],[0,8]], [[0,0],[4,0],[5,1],[5,3],[4,4],[0,4]], [[3,4],[5,8]]],
+      T: [[[0,0],[6,0]], [[3,0],[3,8]]],
+      F: [[[0,0],[0,8]], [[0,0],[5,0]], [[0,4],[4,4]]],
+      P: [[[0,8],[0,0],[4,0],[5,1],[5,3],[4,4],[0,4]]],
+      D: [[[0,0],[0,8],[3,8],[5,6],[5,2],[3,0],[0,0]]],
+    }
+    letters.forEach((letter, i) => strokes[letter].forEach(points => shapes.push(line(points.map(([x,y]) => [26 + i * 7 + x, 46.5 + y]), colors.paper, 1.3))))
+    shapes.push(line([[44.5,19.5],[44.5,17],[45.5,15],[47.5,14],[49.5,15],[50.5,17],[50.5,19.5]], colors.ink, 1.8))
+    shapes.push({ ...rect(42, 19, 12, 11, colors.ink, 1.2), readonlyLock: true })
+    shapes.push(rect(47.2, 21.5, 1, 2, colors.paper, 0.5))
   }
   return shapes
 }
 const pathData = points => points.map(([x, y], i) => `${i ? 'L' : 'M'}${x} ${y}`).join('')
 function svgFor(shapes) {
   const elements = shapes.map(shape => {
-    if ('x' in shape) return `  <rect x="${shape.x}" y="${shape.y}" width="${shape.w}" height="${shape.h}" rx="${shape.radius}" fill="${shape.fill}"/>`
+    if ('x' in shape) return `  <rect${shape.readonlyLock ? ' data-readonly-lock="true"' : ''} x="${shape.x}" y="${shape.y}" width="${shape.w}" height="${shape.h}" rx="${shape.radius}" fill="${shape.fill}"/>`
     const d = shape.contours ? shape.contours.map(points => `${pathData(points)}Z`).join('') : pathData(shape.points)
     const stroke = shape.stroke ? ` stroke="${shape.stroke}" stroke-width="${shape.width}" stroke-linecap="round" stroke-linejoin="round"` : ''
     return `  <path d="${d}" fill="${shape.fill ?? 'none'}" fill-rule="evenodd"${stroke}/>`
@@ -151,7 +165,7 @@ function png(size, sample) {
   return Buffer.concat([Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]), chunk('IHDR', header), chunk('IDAT', storedZlib(raster(size, sample))), chunk('IEND', Buffer.alloc(0))])
 }
 export function createDocumentAssets(kind) {
-  if (kind !== 'markdown' && kind !== 'text') throw new TypeError('Unknown document icon kind: expected markdown or text.')
+  if (!['markdown', 'text', 'rtf', 'pdf'].includes(kind)) throw new TypeError('Unknown document icon kind.')
   const shapes = artwork(kind)
   const sample = sampler(shapes)
   const images = documentIconSizes.map(size => png(size, sample))
@@ -171,7 +185,7 @@ if (process.argv[1] && pathToFileURL(path.resolve(process.argv[1])).href === imp
   const root = path.resolve(import.meta.dirname, '..')
   const previewDir = process.argv[2] && path.resolve(process.argv[2])
   if (previewDir) await mkdir(previewDir, { recursive: true })
-  for (const kind of ['markdown', 'text']) {
+  for (const kind of ['markdown', 'text', 'rtf', 'pdf']) {
     const assets = createDocumentAssets(kind)
     await writeFile(path.join(root, `public/elevenmd-${kind}.svg`), assets.svg)
     await writeFile(path.join(root, `public/elevenmd-${kind}.ico`), assets.ico)

@@ -1,5 +1,13 @@
 # Changes
 
+## 0.3.14
+
+- Export Markdown to RTF or PDF without changing the saved Markdown document.
+- RTF and PDF are export-only and are not registered as openable types. RTF exports preserve Markdown tables as actual RTF tables; unsupported formatting or images may be omitted.
+- Help now presents keyboard shortcuts by category. Strikethrough uses Ctrl+Shift+X; Save As uses Ctrl+Shift+S.
+- Switch the interface between English and Brazilian Portuguese. Local diagnostics automatically record sanitized categories unless disabled.
+- Adds a candidate workaround for the Linux Wayland/Vulkan warning; it has not been verified on Wayland yet.
+
 ## 0.3.13
 
 - Markdown and text files now have distinct folded-paper icons with MD and TXT badges. The application icon is unchanged.

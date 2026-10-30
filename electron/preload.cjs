@@ -5,8 +5,11 @@ contextBridge.exposeInMainWorld('notepad', Object.freeze({
   open: () => ipcRenderer.invoke('notepad:open'),
   initialFiles: () => ipcRenderer.invoke('notepad:initial-files'),
   save: request => ipcRenderer.invoke('notepad:save', request),
+  exportRtf: request => ipcRenderer.invoke('notepad:export-rtf', request),
+  exportPdf: request => ipcRenderer.invoke('notepad:export-pdf', request),
   adoptFile: request => ipcRenderer.invoke('notepad:adopt-file', request),
   inspectFiles: ids => ipcRenderer.invoke('notepad:inspect-files', ids),
+
   resolveFile: request => ipcRenderer.invoke('notepad:resolve-file', request),
   locateFile: id => ipcRenderer.invoke('notepad:locate-file', id),
   openLink: value => ipcRenderer.invoke('notepad:open-link', value),

@@ -1,0 +1,42 @@
+import { test, expect } from '@playwright/test'
+
+test('language preference switches app controls and persists without translating document text', async ({ page }) => {
+  await page.goto('/')
+  await page.locator('.tiptap').fill('Save')
+  await page.getByRole('button', { name: 'Settings', exact: true }).click()
+  await page.getByLabel('Language').selectOption('pt-BR')
+  await expect(page.getByRole('dialog')).toContainText('Configurações')
+  await page.getByRole('button', { name: 'Concluído' }).click()
+  await expect(page.getByRole('button', { name: 'Arquivo', exact: true })).toBeVisible()
+  await expect(page.getByRole('textbox', { name: 'Markdown formatado' })).toHaveText('Save')
+  await expect(page.locator('.tiptap')).toHaveText('Save')
+  await page.getByRole('button', { name: 'Arquivo', exact: true }).click()
+  await expect(page.getByRole('menuitem', { name: /^Salvar Ctrl\+S$/ })).toBeVisible()
+  await page.reload()
+  await expect(page.getByRole('button', { name: 'Arquivo', exact: true })).toBeVisible()
+  await expect(page.locator('.tiptap')).toHaveText('Save')
+})
+
+test('switching modes without editing checkpoints the final mode', async ({ page }) => {
+  await page.goto('/')
+  await page.locator('.tiptap').fill('Mode checkpoint')
+  await page.getByRole('button', { name: 'Source', exact: true }).click()
+  await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('notepad-session') || '{}').mode)).toBe('source')
+  await page.getByRole('button', { name: 'Formatted', exact: true }).click()
+  await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('notepad-session') || '{}').mode)).toBe('formatted')
+  await page.reload()
+  await expect(page.locator('.tiptap')).toHaveText('Mode checkpoint')
+})
+
+test('Portuguese translates editor labels without translating document content', async ({ page }) => {
+  await page.goto('/')
+  await page.locator('.tiptap').fill('Save')
+  await page.getByRole('button', { name: 'Settings', exact: true }).click()
+  await page.getByLabel('Language').selectOption('pt-BR')
+  await page.getByRole('button', { name: 'Concluído' }).click()
+  await page.getByRole('button', { name: 'Código-fonte', exact: true }).click()
+  await expect(page.getByRole('textbox', { name: 'Código-fonte Markdown' })).toHaveValue('Save')
+  await page.getByRole('button', { name: 'Pré-visualização', exact: true }).click()
+  await expect(page.locator('#preview')).toHaveAttribute('aria-label', 'Pré-visualização Markdown')
+  await expect(page.locator('#preview')).toContainText('Save')
+})

@@ -11,7 +11,7 @@ const generator = path.join(root, 'scripts/generate-document-icons.mjs')
 
 test('checked-in document assets reproduce without rewriting canonical files', async () => {
   const { createDocumentAssets } = await import('../scripts/generate-document-icons.mjs')
-  for (const kind of ['markdown', 'text']) {
+  for (const kind of ['markdown', 'text', 'rtf', 'pdf']) {
     const assets = createDocumentAssets(kind)
     assert.equal(await readFile(path.join(root, `public/elevenmd-${kind}.svg`), 'utf8'), assets.svg)
     assert.ok((await readFile(path.join(root, `public/elevenmd-${kind}.ico`))).equals(assets.ico), `${kind} ICO drift`)
@@ -32,9 +32,9 @@ test('CLI writes assets in an isolated scratch repo and only explicitly requeste
     await mkdir(path.join(scratch, 'public'), { recursive: true })
     await cp(generator, isolatedGenerator)
     execFileSync(process.execPath, [isolatedGenerator, previewDir], { cwd: scratch, windowsHide: true })
-    assert.deepEqual((await readdir(previewDir)).sort(), ['markdown', 'text'].flatMap(kind => documentIconSizes.map(size => `elevenmd-${kind}-${size}.png`)).sort())
+    assert.deepEqual((await readdir(previewDir)).sort(), ['markdown', 'text', 'rtf', 'pdf'].flatMap(kind => documentIconSizes.map(size => `elevenmd-${kind}-${size}.png`)).sort())
     const icons = []
-    for (const kind of ['markdown', 'text']) {
+    for (const kind of ['markdown', 'text', 'rtf', 'pdf']) {
       const assets = createDocumentAssets(kind)
       const again = createDocumentAssets(kind)
       assert.equal(assets.svg, again.svg)
@@ -86,7 +86,7 @@ test('unknown document kinds are rejected rather than silently becoming TXT', as
 test('document artwork uses the approved folded-page geometry with antialiased transparent ICO frames', async () => {
   const { createDocumentAssets, documentIconSizes } = await import('../scripts/generate-document-icons.mjs')
   assert.deepEqual(documentIconSizes, [16, 24, 32, 48, 64, 128, 256])
-  for (const kind of ['markdown', 'text']) {
+  for (const kind of ['markdown', 'text', 'rtf', 'pdf']) {
     const assets = createDocumentAssets(kind)
     assert.equal(assets.ico.readUInt16LE(0), 0)
     assert.equal(assets.ico.readUInt16LE(2), 1)
@@ -115,16 +115,27 @@ test('document artwork uses the approved folded-page geometry with antialiased t
       assert.equal(pixel(size - 1, size - 1)[3], 0)
       assert.equal(at(52, 5)[3], 0, `outside folded corner at ${size}`)
       assert.deepEqual(at(22, 12), [255, 247, 237, 255], `warm ivory page at ${size}`)
-      assert.deepEqual(at(43, 14), [229, 220, 210, 255], `fold at ${size}`)
-      assert.deepEqual(at(17, 46), kind === 'markdown' ? [239, 128, 98, 255] : [73, 66, 78, 255], `badge at ${size}`)
+      if (kind === 'markdown' || kind === 'text') assert.deepEqual(at(43, 14), [229, 220, 210, 255], `fold at ${size}`)
+      assert.deepEqual(at(17, 46), { markdown: [239, 128, 98, 255], text: [73, 66, 78, 255], rtf: [128, 90, 150, 255], pdf: [186, 81, 73, 255] }[kind], `badge at ${size}`)
       assert.ok(Array.from({ length: size * size }, (_, p) => pixel(p % size, Math.floor(p / size))[3]).some(alpha => alpha > 0 && alpha < 255), `supersampled curved/diagonal edge at ${size}`)
       if (size >= 128) {
         assert.deepEqual(at(10, 22), [101, 93, 101, 255], 'charcoal paper outline')
         assert.deepEqual(at(18, 24), kind === 'markdown' ? [73, 66, 78, 255] : [155, 144, 145, 255], 'document text strokes')
-        assert.deepEqual(at(kind === 'markdown' ? 26 : 29, 50), kind === 'markdown' ? [33, 31, 41, 255] : [255, 247, 237, 255], 'vector badge lettering')
+        if (kind === 'markdown' || kind === 'text') assert.deepEqual(at(kind === 'markdown' ? 26 : 29, 50), kind === 'markdown' ? [33, 31, 41, 255] : [255, 247, 237, 255], 'vector badge lettering')
         if (kind === 'markdown') assert.deepEqual(at(40, 50), [239, 128, 98, 255], 'D counter preserves the coral badge through the glyph')
       }
     }
     assert.equal(nextOffset, assets.ico.length, 'no trailing or missing ICO payload')
+  }
+})
+
+
+test('read-only formats have a visible lock and distinct format badges', async () => {
+  const { createDocumentAssets } = await import('../scripts/generate-document-icons.mjs')
+  for (const [kind, color] of [['rtf', '#805a96'], ['pdf', '#ba5149']]) {
+    const asset = createDocumentAssets(kind)
+    assert.ok(asset.svg.includes(color), kind)
+    assert.ok(asset.svg.includes('data-readonly-lock'), 'lock marker')
+    assert.deepEqual(decode(asset.previews.at(-1)).at(51, 22), [33, 31, 41, 255])
   }
 })

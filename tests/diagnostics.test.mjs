@@ -129,7 +129,7 @@ test('invalid, oversized, and unsupported stored formats fail closed and are rep
     await writeFile(file, raw)
     const restarted = require(modulePath).createDiagnosticsService({ file, version: '0.3.0' })
     await restarted.load()
-    assert.equal(restarted.getConsent(), null)
+    assert.equal(restarted.getConsent(), false)
     assert.equal(await restarted.record({ type: 'document_new', outcome: 'success' }), false)
     assert.deepEqual((await restarted.inspect()).events, [])
     assert.ok((await stat(file)).size <= 256 * 1024)
@@ -400,11 +400,34 @@ test('a consent request during failed-write cleanup cannot silently reenable col
   assert.equal(await data.service.record({ type: 'document_open', outcome: 'success' }), false)
 })
 
-test('default unset consent does not create storage when recording', async t => {
-  const { service, file } = await fixture(t)
+test('unset consent records only allowlisted critical diagnostics and survives restart', async t => {
+  const { service, file } = await fixture(t, { now: () => 1000000000 })
   assert.equal(service.getConsent(), null)
-  assert.equal(service.getState().enabled, false)
+  assert.equal(service.getState().enabled, true)
   assert.equal(await service.record({ type: 'document_new', outcome: 'success' }), false)
-  assert.deepEqual((await service.inspect()).events, [])
-  await assert.rejects(stat(file), { code: 'ENOENT' })
+  assert.equal(await service.record({ type: 'error', category: 'file_read', message: 'SECRET', path: 'SECRET' }), true)
+  assert.equal(await service.record({ type: 'process_failure', process: 'renderer', reason: 'crashed', stack: 'SECRET' }), true)
+  assert.equal(await service.record({ type: 'warning', category: 'external_change', url: 'SECRET' }), true)
+  assert.equal(await service.record({ type: 'warning', category: 'SECRET' }), false)
+  assert.equal(await service.record({ type: 'process_failure', process: 'SECRET', reason: 'crashed' }), false)
+  const expected = [
+    { type: 'error', category: 'file_read', at: 1000000000 },
+    { type: 'process_failure', process: 'renderer', reason: 'crashed', at: 1000000000 },
+    { type: 'warning', category: 'external_change', at: 1000000000 },
+  ]
+  assert.deepEqual((await service.inspect()).events, expected)
+  assert.equal((await readFile(file, 'utf8')).includes('SECRET'), false)
+  const restarted = require(modulePath).createDiagnosticsService({ file, now: () => 1000000000 })
+  await restarted.load()
+  assert.equal(restarted.getConsent(), null)
+  assert.deepEqual((await restarted.inspect()).events, expected)
+  await restarted.clear()
+  assert.equal(restarted.getConsent(), null)
+  assert.deepEqual((await restarted.inspect()).events, [])
+  await restarted.setConsent(false)
+  assert.equal(await restarted.record({ type: 'error', category: 'file_read' }), false)
+  const denied = require(modulePath).createDiagnosticsService({ file, now: () => 1000000000 })
+  await denied.load()
+  assert.equal(denied.getConsent(), false)
+  assert.equal(await denied.record({ type: 'warning', category: 'external_change' }), false)
 })

@@ -571,6 +571,7 @@ test('Settings and View: themes/fonts/sizes/wrap/spellcheck, persistence, all mo
   await button(page, '90%').click()
   await expect(button(page, '100%')).toBeVisible()
   await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('notepad-session'))?.tabs[0].content)).toBe('A clear writing space.')
+  await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('notepad-session'))?.mode)).toBe('formatted')
   await page.reload()
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark')
   await expect(rich(page)).toHaveCSS('font-size', '20px')

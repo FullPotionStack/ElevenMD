@@ -21,7 +21,7 @@ test('document icon packaging validates checked-in assets before copying top-lev
   const scratch = await mkdtemp(path.join(await testScratch(), 'elevenmd-icon-packaging-'))
   const source = path.join(scratch, 'source'), out = path.join(scratch, 'runtime')
   const sourcePublic = path.join(source, 'public')
-  const kinds = ['markdown', 'text']
+  const kinds = ['markdown', 'text', 'rtf', 'pdf']
   try {
     await mkdir(sourcePublic, { recursive: true })
     for (const kind of kinds) for (const ext of ['svg', 'ico']) {
@@ -119,4 +119,12 @@ test('installer app identity is friendly, optional, correctly quoted and scoped 
   assert.match(text, /PrivilegesRequired=lowest/)
   assert.match(text, /Type: dirifempty; Name: "\{app\}"/)
   assert.doesNotMatch(text, /Type: filesandordirs|UserChoice/)
+})
+
+
+test('RTF and PDF are not registered as openable types', async () => {
+  const text = await readFile(installerSource, 'utf8')
+  const registry = text.split('[Registry]')[1].split('\n[')[0].split('\n').filter(line => line.startsWith('Root:'))
+  for (const ext of ['rtf', 'pdf']) assert.ok(registry.every(line => !line.toLowerCase().includes(`.${ext}`)))
+  assert.doesNotMatch(text, /UserChoice/)
 })

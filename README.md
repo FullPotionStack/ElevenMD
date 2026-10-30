@@ -5,7 +5,11 @@ A Markdown and plain-text desktop editor for Windows, Linux, and macOS.
 - Formatted editing, Markdown source, and preview with tables, task lists, footnotes, and math.
 - Tabs, session recovery, find/replace, and light/dark themes.
 - Disk-change detection, recoverable refresh, and conflict comparison.
-- Local files and drafts. Optional diagnostics stay on your computer.
+- Local files and drafts. Sanitized diagnostics stay on your computer.
+
+## Unreleased source features
+
+The 0.3.14 source adds RTF/PDF export and a Help shortcut reference. RTF and PDF are export-only: ElevenMD opens Markdown and text files, not RTF or PDF. Export chooses a separate destination and does not mark a Markdown draft saved. These features are not in the 0.3.13 downloads below.
 
 ## Download
 

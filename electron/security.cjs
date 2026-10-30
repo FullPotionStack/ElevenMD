@@ -31,7 +31,7 @@ function createSecurityPolicy(distDirectory, devURL) {
     try { return documentURL(value) === documentURL(entryURL); } catch { return false; }
   }
   const connect = development ? `${development.origin} ${development.origin.replace(/^http/, 'ws')}` : "'none'";
-  const csp = `default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self'; connect-src ${connect}; frame-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'`;
+  const csp = `default-src 'none'; script-src 'self'; worker-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self'; connect-src ${connect}; frame-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none`;
   return { entryURL, development: Boolean(development), allowRequest, allowDocument, csp };
 }
 function isTrustedSender(event, window, policy) {

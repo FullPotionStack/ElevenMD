@@ -8,7 +8,7 @@ const { createUpdateService } = require('./updates.cjs');
 const { createDiagnosticsService } = require('./diagnostics.cjs');
 const { repository: REPOSITORY } = require('./distribution.cjs');
 
-async function setupSupport({ electron, window, handle, userData, version, checkpoint }) {
+async function setupSupport({ electron, window, handle, userData, version, checkpoint, t = value => value }) {
   const { app, dialog, shell } = electron;
   const diagnostics = createDiagnosticsService({ file: path.join(userData, 'diagnostics.json'), version });
   await diagnostics.load().catch(() => {}); // Storage failure disables collection, never app startup.
@@ -27,9 +27,9 @@ async function setupSupport({ electron, window, handle, userData, version, check
       if (!window.isDestroyed()) window.webContents.send('notepad:action', { type: 'update-progress', state });
     },
     confirmInstall: async update => {
-      const result = await dialog.showMessageBox(window, { type: 'question', title: 'Update ElevenMD', message: `Install ElevenMD ${update.version}?`,
-        detail: 'Your tabs will be checkpointed before ElevenMD closes. The updater will show progress, update this copy in its current folder, and reopen it without a setup wizard. Portable copies stay portable. Your document files will not be overwritten.',
-        buttons: ['Install and restart', 'Cancel'], defaultId: 1, cancelId: 1, noLink: true });
+      const result = await dialog.showMessageBox(window, { type: 'question', title: t('Update ElevenMD'), message: t('Install ElevenMD {version}?', { version: update.version }),
+        detail: t('Your tabs will be checkpointed before ElevenMD closes. The updater will show progress, update this copy in its current folder, and reopen it without a setup wizard. Portable copies stay portable. Your document files will not be overwritten.'),
+        buttons: [t('Install and restart'), t('Cancel')], defaultId: 1, cancelId: 1, noLink: true });
       return result.response === 0;
     },
     beforeInstall: async () => { if (typeof checkpoint !== 'function') throw new Error('Checkpoint unavailable.'); await checkpoint(); },
@@ -62,7 +62,7 @@ async function setupSupport({ electron, window, handle, userData, version, check
   zero('diagnostics-clear', async () => { await diagnostics.clear(); return state(); });
   zero('diagnostics-export', async () => {
     const report = await diagnostics.buildReport();
-    const result = await dialog.showSaveDialog(window, { title: 'Export sanitized diagnostics', defaultPath: 'ElevenMD-diagnostics.json', filters: [{ name: 'JSON diagnostics', extensions: ['json'] }], properties: ['showOverwriteConfirmation', 'createDirectory'] });
+    const result = await dialog.showSaveDialog(window, { title: t('Export sanitized diagnostics'), defaultPath: 'ElevenMD-diagnostics.json', filters: [{ name: t('JSON diagnostics'), extensions: ['json'] }], properties: ['showOverwriteConfirmation', 'createDirectory'] });
     if (result.canceled || !result.filePath) return false;
     await fs.writeFile(result.filePath, report, { encoding: 'utf8', mode: 0o600 });
     return true;

@@ -3,6 +3,7 @@ import { EditorState } from '@tiptap/pm/state'
 import { TableMap } from '@tiptap/pm/tables'
 import { SourceHistory } from './source-history.js'
 import StarterKit from '@tiptap/starter-kit'
+import Strike from '@tiptap/extension-strike'
 import { Markdown } from '@tiptap/markdown'
 import { TableKit } from '@tiptap/extension-table'
 import { TaskItem } from '@tiptap/extension-list'
@@ -12,6 +13,9 @@ import 'katex/dist/katex.min.css'
 import { imageNode, loadImage, previewImages } from './images.js'
 import { setupSupport } from './support-ui.js'
 import { setupFileSync } from './file-sync.js'
+
+import { normalizeLocale, translate } from './i18n.js'
+import { createUiTranslator } from './ui-translation.js'
 import './style.css'
 import { version as appVersion } from '../package.json'
 
@@ -21,7 +25,7 @@ root.innerHTML = `<header class="tabs" aria-label="Document tabs"><div id="tabli
 <nav class="menubar"><div class="menus"><button id="file-menu">File</button><button id="edit-menu">Edit</button><button id="view-menu">View</button><button id="help-menu">Help</button></div><label class="quick-theme">Theme<select id="quick-theme" aria-label="Quick theme"><option value="system">Auto (system)</option><option value="light">Light</option><option value="dark">Dark</option></select></label><button id="settings" aria-label="Settings" title="Settings">⚙ Settings</button><div class="modes" aria-label="Editing mode"><button id="formatted" class="selected">Formatted</button><button id="source-mode">Source</button><button id="preview-mode">Preview</button></div></nav>
 <div class="toolbar" aria-label="Formatting"><select id="block-style" aria-label="Block style"><option value="p">Paragraph</option><option value="h1">Heading 1</option><option value="h2">Heading 2</option><option value="h3">Heading 3</option><option value="h4">Heading 4</option><option value="h5">Heading 5</option><option value="h6">Heading 6</option></select><span class="separator"></span></div>
 <div id="find-bar" hidden><input id="find-text" aria-label="Find text" placeholder="Find in Markdown source"><input id="replace-text" aria-label="Replace with" placeholder="Replace with"><button id="find-next">Next</button><button id="replace-one">Replace</button><button id="replace-all">Replace all</button><span id="find-result" role="status"></span><button id="close-find" aria-label="Close find">×</button></div><main><div id="rich"></div><article id="preview" aria-label="Markdown preview" hidden></article><textarea id="source" aria-label="Markdown source" spellcheck="false" hidden></textarea></main>
-<footer><span id="file-status"></span><span id="statistics"></span><span class="spacer"></span><button id="update-status" hidden aria-live="polite"></button><span id="encoding">UTF-8</span><button id="zoom" title="Reset zoom">100%</button><span>Markdown</span></footer>
+<footer><span id="file-status"></span><span id="statistics"></span><span class="spacer"></span><button id="update-status" hidden aria-live="polite"></button><span id="encoding">UTF-8</span><button id="zoom" title="Reset zoom">100%</button><span id="document-type">Markdown</span></footer>
 <div id="toast" role="status" hidden></div><dialog id="modal"></dialog>`
 let docs = [], activeId, untitledCount = 0, mode = 'formatted', saving = false, fileSync
 let sessionReady = false, autosaveTimer, booting, closingWindow = false, sessionStoragePath = ''
@@ -39,7 +43,7 @@ modal.showModal = () => {
 }
 const editor = new Editor({
   element: document.querySelector('#rich'),
-  extensions: [StarterKit.configure({ link: { openOnClick: false } }), Markdown, TableKit, CompatibleTaskList, TaskItem.configure({ nested: true }), ListStyle, imageNode(Image, { api, getDocument: active, getPreferences: () => prefs })],
+  extensions: [StarterKit.configure({ link: { openOnClick: false }, strike: false }), Strike.extend({ addKeyboardShortcuts() { return { 'Mod-Shift-x': () => this.editor.commands.toggleStrike() } } }), Markdown, TableKit, CompatibleTaskList, TaskItem.configure({ nested: true }), ListStyle, imageNode(Image, { api, getDocument: active, getPreferences: () => prefs })],
   content: '', contentType: 'markdown',
   editorProps: { attributes: { 'aria-label': 'Formatted Markdown', role: 'textbox', 'aria-multiline': 'true', spellcheck: 'true' } },
   onUpdate: () => { if (active()) { active().content = editor.getMarkdown(); active().richContent = active().content; update() } },
@@ -49,11 +53,11 @@ function update() {
   const tablist = $('#tablist'); tablist.replaceChildren()
   for (const doc of docs) {
     const container = document.createElement('div'); container.className = 'tab-container'
-    const button = document.createElement('button'); button.className = 'tab'; button.setAttribute('role', 'tab'); button.setAttribute('aria-selected', String(doc.id === activeId)); button.setAttribute('aria-label', doc.name); button.dataset.dirty = String(dirty(doc)); button.dataset.fileState = doc.external?.status || 'same'; button.title = doc.path || doc.name
+    const button = document.createElement('button'); button.className = 'tab'; button.setAttribute('role', 'tab'); button.setAttribute('aria-selected', String(doc.id === activeId)); button.setAttribute('aria-label', doc.name); button.dataset.dirty = String(dirty(doc)); button.dataset.fileState = doc.external?.status || doc.sourceExternal?.status || 'same'; button.title = doc.path || doc.name
     const name = document.createElement('span'); name.textContent = doc.name
-    const dot = document.createElement('span'); dot.className = 'dirty-dot'; dot.textContent = doc.external ? '⚠' : dirty(doc) ? '●' : ''; dot.setAttribute('aria-hidden', 'true')
+    const dot = document.createElement('span'); dot.className = 'dirty-dot'; dot.textContent = doc.external || doc.sourceExternal ? '⚠' : dirty(doc) ? '●' : ''; dot.setAttribute('aria-hidden', 'true')
     button.append(name, dot); button.onclick = () => select(doc.id)
-    const close = document.createElement('button'); close.className = 'close-tab'; close.setAttribute('aria-label', `Close ${doc.name}`); close.textContent = '×'; close.onclick = () => closeDoc(doc.id)
+    const close = document.createElement('button'); close.className = 'close-tab'; close.setAttribute('aria-label', translate(prefs.language, 'Close {name}', { name: doc.name })); close.textContent = '×'; close.onclick = () => closeDoc(doc.id)
     button.title += '\nRight-click to change tab color'
     const colorPicker = event => { event.preventDefault(); tabColor(doc) }
     container.oncontextmenu = colorPicker
@@ -73,9 +77,11 @@ function update() {
   }
   const doc = active(); if (!doc) return
   fileSync?.render()
+
   $('#file-status').textContent = fileSync?.describe(doc) || (!dirty(doc) && doc.syncNotice) || (doc.recovered && !doc.path ? 'Recovered draft · Save as…' : dirty(doc) ? 'Unsaved changes' : doc.path ? 'Saved' : 'New document')
-  $('#statistics').textContent = `${doc.content.trim() ? doc.content.trim().split(/\s+/u).length : 0} words · ${doc.content.length} characters`
+  $('#statistics').textContent = translate(prefs.language, '{words} words · {characters} characters', { words: doc.content.trim() ? doc.content.trim().split(/\s+/u).length : 0, characters: doc.content.length })
   $('#encoding').textContent = `UTF-8${doc.bom ? ' BOM' : ''} · ${doc.eol || 'LF'}`
+  $('#document-type').textContent = 'Markdown'
   document.title = `${dirty(doc) ? '● ' : ''}${doc.name} — ElevenMD`
   api?.setDirty(docs.some(dirty))
   if (!api?.saveSession) try { localStorage.setItem('notepad-drafts', JSON.stringify(docs.filter(dirty).map(d => ({ name: d.name, content: d.content, eol: d.eol, bom: d.bom })))) } catch { toast('Draft recovery storage is full or unavailable. Save your file to keep your changes.') }
@@ -105,7 +111,9 @@ function checkpointSession() {
 function select(id) {
   if (active()) active().editorState = editor.state
   activeId = id; const doc = active()
+  $('.modes').hidden = false
   source.value = doc.content
+
   if (mode === 'preview') { setMode('preview'); update(); return }
   if (mode === 'source') { setMode('source'); update(); return }
   if (needsSource(doc.content) && !doc.allowConversion) { setMode('source'); update(); return }
@@ -129,21 +137,28 @@ function loadRich(doc) {
   doc.richContent = doc.content
 }
 function newDoc() {
-  const doc = { id: crypto.randomUUID(), name: `Untitled ${++untitledCount}`, content: '', savedContent: '', eol: 'LF', bom: false }
+  const doc = { id: crypto.randomUUID(), name: translate(prefs.language, 'Untitled {count}', { count: ++untitledCount }), content: '', savedContent: '', eol: 'LF', bom: false }
   docs.push(doc); select(doc.id); mode === 'source' ? source.focus() : editor.commands.focus()
   record({ type: 'document_new', outcome: 'success' })
 }
-function addFiles(files) {
+async function addFiles(files) {
+  const removePristineUntitled = () => {
+    if (docs.length === 1 && !docs[0].path && !docs[0].sourceKind && !docs[0].content && !dirty(docs[0])) docs = []
+  }
   for (const file of files) {
+    if (file.kind === 'rtf' || file.kind === 'pdf' || /\.(?:rtf|pdf)$/i.test(file.name || '')) { toast('RTF and PDF files can be exported, but not opened.'); continue }
+    const alreadyOpen = docs.find(doc => doc.id === file.id)
+    if (alreadyOpen) { select(alreadyOpen.id); continue }
+
     const existing = docs.find(d => d.path && d.path === file.path)
     if (existing) { select(existing.id); continue }
-    if (docs.length === 1 && !docs[0].path && !docs[0].content) docs = []
+    removePristineUntitled()
     docs.push({ ...file, savedContent: file.content }); select(file.id)
   }
 }
 async function openFiles() {
   if (!api) return toast('Use the Windows desktop app to open and save local files.')
-  try { addFiles(await api.open()); await fileSync?.check() } catch (error) { toast(error.message) }
+  try { await addFiles(await api.open()); await fileSync?.check() } catch (error) { toast(error.message) }
 }
 async function saveDoc(doc = active(), saveAs = false) {
   if (saving) return false
@@ -155,9 +170,70 @@ async function saveDoc(doc = active(), saveAs = false) {
     const result = await api.save({ id: doc.id, content: snapshot, saveAs, name: doc.name })
     if (!result) return false
     doc.path = result.path; doc.name = result.name; doc.eol = result.eol || doc.eol; doc.bom = result.bom ?? doc.bom; doc.savedContent = snapshot
+    delete doc.sourceKind; delete doc.sourceHash; delete doc.sourceBaseline; delete doc.sourceExternal
     doc.external = null; doc.syncNotice = ''
     update(); fileSync?.check(); toast('Saved'); return true
   } catch (error) { toast(error.message); return false } finally { saving = false }
+}
+async function exportRtf() {
+  const doc = active()
+  if (!api?.exportRtf) return toast('RTF export is available in the desktop app.')
+  try {
+    const { markdownToRtf } = await import('./rtf-export.js')
+    const converted = markdownToRtf(doc.content)
+    if (converted.warnings.length) {
+      const approved = await new Promise(resolve => {
+        modal.innerHTML = '<h2>RTF formatting limitations</h2><p id="rtf-export-warning"></p><div class="dialog-actions"><button id="cancel-rtf-export">Cancel</button><button id="confirm-rtf-export" class="primary">Export anyway</button></div>'
+        $('#rtf-export-warning').textContent = converted.warnings.join(' ')
+        const finish = value => { modal.removeEventListener('cancel', cancel); modal.close(); resolve(value) }
+        const cancel = event => { event.preventDefault(); finish(false) }
+        modal.addEventListener('cancel', cancel)
+        $('#cancel-rtf-export').onclick = () => finish(false)
+        $('#confirm-rtf-export').onclick = () => finish(true)
+        modal.showModal()
+      })
+      if (!approved) return
+    }
+    const name = `${doc.name.replace(/\.(?:md|markdown|txt|rtf)$/i, '')}.rtf`
+    const result = await api.exportRtf({ name, data: converted.rtf })
+    if (result) toast('RTF exported. The Markdown document has not been saved.')
+  } catch (error) { toast(error.message) }
+}
+async function exportPdf() {
+  const doc = active()
+  if (!api?.exportPdf) return toast('PDF export is available in the desktop app.')
+  try {
+    const { renderMarkdown } = await import('./markdown-preview.js')
+    const template = document.createElement('template'); template.innerHTML = renderMarkdown(doc.content)
+    let missingImages = false
+    for (const image of template.content.querySelectorAll('img')) {
+      const source = image.getAttribute('src') || ''
+      if (!/^https?:/i.test(source) && doc.path && api.resolveImage) {
+        try {
+          const resolved = await api.resolveImage({ id: doc.id, source })
+          if (/^data:image\/(?:png|jpeg|gif|webp|bmp|avif);base64,/i.test(resolved.src)) { image.setAttribute('src', resolved.src); continue }
+        } catch { /* Use alternative text below. */ }
+      }
+      if (/^data:image\/(?:png|jpeg|gif|webp|bmp|avif);base64,/i.test(source)) continue
+      missingImages = true
+      image.replaceWith(document.createTextNode(`[Image: ${image.alt || 'unavailable'}]`))
+    }
+    if (missingImages) {
+      const approved = await new Promise(resolve => {
+        modal.innerHTML = '<h2>Some images cannot be exported</h2><p>Unavailable or remote images will be replaced by their alternative text in the PDF.</p><div class="dialog-actions"><button id="cancel-pdf-export">Cancel</button><button id="confirm-pdf-export" class="primary">Export anyway</button></div>'
+        const finish = value => { modal.removeEventListener('cancel', cancel); modal.close(); resolve(value) }
+        const cancel = event => { event.preventDefault(); finish(false) }
+        modal.addEventListener('cancel', cancel)
+        $('#cancel-pdf-export').onclick = () => finish(false)
+        $('#confirm-pdf-export').onclick = () => finish(true)
+        modal.showModal()
+      })
+      if (!approved) return
+    }
+    const name = `${doc.name.replace(/\.(?:md|markdown|txt|rtf)$/i, '')}.pdf`
+    const result = await api.exportPdf({ name, html: template.innerHTML })
+    if (result) toast('PDF exported. The Markdown document has not been saved.')
+  } catch (error) { toast(error.message) }
 }
 async function canClose(doc) {
   if (!dirty(doc) && !doc.external) return true
@@ -226,7 +302,8 @@ function setMode(next) {
     $('#convert').onclick = () => { modal.close(); if (active() === doc) { doc.allowConversion = true; setMode('formatted') } }
     modal.showModal(); return
   }
-  if (mode !== next) record({ type: 'mode_changed', mode: next })
+  const modeChanged = mode !== next
+  if (modeChanged) record({ type: 'mode_changed', mode: next })
   mode = next; source.value = active().content
   if (next === 'formatted' && active().richContent !== active().content) loadRich(active())
   source.hidden = next !== 'source'; $('#rich').hidden = next !== 'formatted'; $('#preview').hidden = next !== 'preview'
@@ -237,6 +314,7 @@ function setMode(next) {
   if (next === 'preview') renderPreview()
   else if (next === 'source') source.focus()
   else editor.commands.focus()
+  if (modeChanged && sessionReady) update()
 }
 let sourceBefore = { from: 0, to: 0 }
 source.addEventListener('beforeinput', () => { sourceBefore = { from: source.selectionStart, to: source.selectionEnd } })
@@ -275,10 +353,13 @@ $('#tablist').addEventListener('wheel', event => {
   tabs.scrollLeft += event.deltaY * unit
 }, { passive: false })
 let zoom = 100
-let prefs = { theme: 'system', font: 'Georgia', size: 16, wrap: true, spellcheck: false, remoteImages: false }
+let prefs = { theme: 'system', font: 'Georgia', size: 16, wrap: true, spellcheck: false, remoteImages: false, language: 'en' }
 try { prefs = { ...prefs, ...JSON.parse(localStorage.getItem('notepad-preferences') || '{}') } } catch { /* Invalid stored preferences use defaults. */ }
+prefs.language = normalizeLocale(prefs.language)
+const uiTranslator = createUiTranslator(document.body)
 if (prefs.font === 'Segoe UI') prefs.font = 'Georgia'
 function applyPrefs() {
+  uiTranslator.setLocale(prefs.language)
   document.documentElement.dataset.theme = prefs.theme
   $('#quick-theme').value = prefs.theme
   const value = prefs.font === 'Consolas' ? 'Consolas, monospace' : "Georgia, 'Times New Roman', serif"
@@ -286,10 +367,12 @@ function applyPrefs() {
   document.documentElement.style.setProperty('--editor-size', `${prefs.size * zoom / 100}px`)
   source.classList.toggle('nowrap', !prefs.wrap)
   $('#zoom').textContent = `${zoom}%`
-  editor.setOptions({ editorProps: { ...editor.options.editorProps, attributes: { ...editor.options.editorProps.attributes, spellcheck: String(prefs.spellcheck) } } })
+  editor.setOptions({ editorProps: { ...editor.options.editorProps, attributes: { ...editor.options.editorProps.attributes, 'aria-label': translate(prefs.language, 'Formatted Markdown'), spellcheck: String(prefs.spellcheck) } } })
+  source.setAttribute('aria-label', translate(prefs.language, 'Markdown source'))
+  $('#preview').setAttribute('aria-label', translate(prefs.language, 'Markdown preview'))
   source.spellcheck = prefs.spellcheck
   const effectiveTheme = prefs.theme === 'system' ? (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : prefs.theme
-  const configured = api?.preferences?.({ theme: prefs.theme, effectiveTheme, spellcheck: prefs.spellcheck, remoteImages: prefs.remoteImages }) || Promise.resolve()
+  const configured = api?.preferences?.({ theme: prefs.theme, effectiveTheme, spellcheck: prefs.spellcheck, remoteImages: prefs.remoteImages, language: prefs.language }) || Promise.resolve()
   configured.then(() => {
     for (const dom of document.querySelectorAll('.markdown-image')) if (dom.dataset.source) loadImage(dom.querySelector('img'), dom.querySelector('.image-message'), dom.dataset.source, active(), { api, prefs })
   }).catch(error => toast(error.message))
@@ -303,15 +386,15 @@ function settings(section = 'appearance') {
   modal.dataset.support = 'settings'
   const sections = [['appearance', 'Appearance'], ['editor', 'Editor'], ['privacy', 'Privacy & diagnostics'], ['updates', 'Updates']]
   modal.innerHTML = `<h2>Settings</h2><div class="settings-tabs" role="tablist" aria-label="Settings sections">${sections.map(([id, name]) => `<button id="settings-tab-${id}" role="tab" aria-controls="settings-${id}" aria-selected="false" tabindex="-1">${name}</button>`).join('')}</div>
-    <section id="settings-appearance" role="tabpanel" aria-labelledby="settings-tab-appearance" tabindex="0" hidden><h3>Appearance</h3><label>App theme<select id="theme" aria-label="App theme"><option value="system">Use system setting</option><option value="light">Light</option><option value="dark">Dark</option></select></label><p class="muted small">ElevenMD · ${appVersion} alpha</p></section>
+    <section id="settings-appearance" role="tabpanel" aria-labelledby="settings-tab-appearance" tabindex="0" hidden><h3>Appearance</h3><label>Language<select id="language" aria-label="Language"><option value="en">English</option><option value="pt-BR">Portuguese (Brazil)</option></select></label><label>App theme<select id="theme" aria-label="App theme"><option value="system">Use system setting</option><option value="light">Light</option><option value="dark">Dark</option></select></label><p class="muted small">ElevenMD · ${appVersion} alpha</p></section>
     <section id="settings-editor" role="tabpanel" aria-labelledby="settings-tab-editor" tabindex="0" hidden><h3>Editor</h3><label>Editor font<select id="font" aria-label="Editor font"><option value="Georgia">Georgia</option><option value="Consolas">Consolas</option></select></label><label>Text size<select id="text-size" aria-label="Text size"><option>14</option><option>16</option><option>18</option><option>20</option><option>24</option></select></label><label class="check-label"><input type="checkbox" id="wrap">Wrap Markdown source lines</label><label class="check-label"><input type="checkbox" id="spellcheck">Spell check</label><p class="muted small">Closing the app keeps every tab automatically. Only Save writes to your document file.</p><label class="stacked">Session storage<input id="session-location" aria-label="Session storage" readonly></label></section>
     <section id="settings-privacy" role="tabpanel" aria-labelledby="settings-tab-privacy" tabindex="0" hidden><h3>Privacy & diagnostics</h3><label class="check-label"><input type="checkbox" id="remote-images">Load remote images</label><p class="muted small">Remote images contact their hosting websites only when enabled.</p><div id="settings-diagnostics"></div></section>
     <section id="settings-updates" role="tabpanel" aria-labelledby="settings-tab-updates" tabindex="0" hidden><div id="settings-update-tools"></div></section>
     <div class="dialog-actions"><button id="done" class="primary">Done</button></div>`
   $('#session-location').value = sessionStoragePath || 'Browser storage (development preview)'
-  $('#theme').value = prefs.theme; $('#font').value = prefs.font; $('#text-size').value = prefs.size; $('#wrap').checked = prefs.wrap; $('#spellcheck').checked = prefs.spellcheck; $('#remote-images').checked = prefs.remoteImages
-  const changed = () => { prefs = { ...prefs, theme: $('#theme').value, font: $('#font').value, size: Number($('#text-size').value), wrap: $('#wrap').checked, spellcheck: $('#spellcheck').checked, remoteImages: $('#remote-images').checked }; applyPrefs() }
-  for (const id of ['theme', 'font', 'text-size', 'wrap', 'spellcheck', 'remote-images']) $(`#${id}`).onchange = changed
+  $('#language').value = prefs.language; $('#theme').value = prefs.theme; $('#font').value = prefs.font; $('#text-size').value = prefs.size; $('#wrap').checked = prefs.wrap; $('#spellcheck').checked = prefs.spellcheck; $('#remote-images').checked = prefs.remoteImages
+  const changed = () => { prefs = { ...prefs, language: normalizeLocale($('#language').value), theme: $('#theme').value, font: $('#font').value, size: Number($('#text-size').value), wrap: $('#wrap').checked, spellcheck: $('#spellcheck').checked, remoteImages: $('#remote-images').checked }; applyPrefs(); support.refresh(); if (active()) update() }
+  for (const id of ['language', 'theme', 'font', 'text-size', 'wrap', 'spellcheck', 'remote-images']) $(`#${id}`).onchange = changed
   const activate = (id, focus = false) => {
     for (const [name] of sections) {
       const tab = $(`#settings-tab-${name}`), selected = id === name
@@ -398,7 +481,7 @@ function showMenu(anchor, items) {
   }
   document.body.append(menu); const rect = anchor.getBoundingClientRect(); menu.style.left = `${rect.left}px`; menu.style.top = `${rect.bottom + 4}px`; menu.querySelector('button').focus()
 }
-$('#file-menu').onclick = () => showMenu($('#file-menu'), [['New tab','Ctrl+N',newDoc],['Open…','Ctrl+O',openFiles],['Save','Ctrl+S',() => saveDoc()],['Save as…','Ctrl+Shift+S',() => saveDoc(active(),true)],['','',''],['Close tab','Ctrl+W',() => closeDoc(activeId)],['Exit','Alt+F4',closeWindow]])
+$('#file-menu').onclick = () => showMenu($('#file-menu'), [['New tab','Ctrl+N',newDoc],['Open…','Ctrl+O',openFiles],['Save','Ctrl+S',() => saveDoc()],['Save as…','Ctrl+Shift+S',() => saveDoc(active(),true)],['Export RTF…','',exportRtf],['Export PDF…','',exportPdf],['','',''],['Close tab','Ctrl+W',() => closeDoc(activeId)],['Exit','Alt+F4',closeWindow]])
 $('#edit-menu').onclick = () => showMenu($('#edit-menu'), [['Find…','Ctrl+F',() => showFind()],['Replace…','Ctrl+H',() => showFind(true)],['','',''],['Undo','Ctrl+Z',() => undoWriting()],['Redo','Ctrl+Y',() => undoWriting(true)],['Select all','Ctrl+A',() => { if (mode === 'formatted') { editor.commands.selectAll(); editor.view.focus() } else if (mode === 'source') { source.focus(); source.select() } else toast('Switch to Formatted or Source to select editing content.') }]])
 $('#view-menu').onclick = () => showMenu($('#view-menu'), [['Formatted','',() => setMode('formatted')],['Markdown source','',() => setMode('source')],['Preview','',() => setMode('preview')],['','',''],['Zoom in','Ctrl++',() => changeZoom(10)],['Zoom out','Ctrl+−',() => changeZoom(-10)],['Reset zoom','Ctrl+0',() => { zoom = 100; applyPrefs() }],['Settings','',settings]])
 document.addEventListener('pointerdown', event => { if (!event.target.closest('.popup-menu, .menus')) dismissMenu() })
@@ -526,12 +609,24 @@ window.addEventListener('keydown', event => {
   if (key === 'f' || key === 'h') { event.preventDefault(); showFind(key === 'h') }
   if (key === 'n') { event.preventDefault(); newDoc() }
   if (key === 'o') { event.preventDefault(); openFiles() }
-  if (key === 's') { event.preventDefault(); saveDoc(active(), event.shiftKey) }
+  if (key === 's' && !event.altKey && !event.getModifierState('AltGraph')) { event.preventDefault(); saveDoc(active(), event.shiftKey) }
   if (key === 'w') { event.preventDefault(); closeDoc(activeId) }
   if (key === 'tab') { event.preventDefault(); const i = docs.findIndex(d => d.id === activeId); select(docs[(i + (event.shiftKey ? docs.length - 1 : 1)) % docs.length].id) }
 })
 async function bootstrap() {
-  const stored = api?.restoreSession ? await api.restoreSession() : JSON.parse(localStorage.getItem('notepad-session') || 'null')
+  let stored = api?.restoreSession ? await api.restoreSession() : JSON.parse(localStorage.getItem('notepad-session') || 'null')
+  if (!api?.restoreSession && stored?.tabs?.some(tab => tab.kind === 'pdf' || tab.sourceKind)) {
+    // Back up first; if storage fails, abort before an automatic checkpoint can overwrite the old session.
+    const name = 'notepad-legacy-formats-backup'
+    const key = localStorage.getItem(name) === null ? name : `${name}-${crypto.randomUUID()}`
+    localStorage.setItem(key, JSON.stringify(stored))
+    const tabs = stored.tabs.filter(tab => tab.kind !== 'pdf').map(tab => {
+      if (!tab.sourceKind) return tab
+      const { sourceKind, sourceHash, sourceBaseline, rtfWarning, ...draft } = tab
+      return { ...draft, path: null, savedContent: null, recovered: true }
+    })
+    stored = { ...stored, tabs, activeId: tabs.some(tab => tab.id === stored.activeId) ? stored.activeId : tabs[0]?.id || null }
+  }
   sessionStoragePath = stored?.storagePath || ''
   if (stored?.tabs?.length) {
     docs = stored.tabs.map(tab => ({ ...tab })); mode = stored.mode || 'formatted'
@@ -544,9 +639,9 @@ async function bootstrap() {
       }
     } catch { toast('Could not restore previous drafts.') }
   }
-  for (const doc of docs) { const n = Number(doc.name.match(/^Untitled (\d+)$/)?.[1]); if (n > untitledCount) untitledCount = n }
+  for (const doc of docs) { const n = Number(doc.name.match(/^(?:Untitled|Sem título) (\d+)$/)?.[1]); if (n > untitledCount) untitledCount = n }
   if (docs.length) select(docs.some(d => d.id === stored?.activeId) ? stored.activeId : docs[0].id); else newDoc()
-  if (api) addFiles(await api.initialFiles())
+  if (api) await addFiles(await api.initialFiles())
   sessionReady = true; update()
   await api?.sessionReady?.()
 }
@@ -554,12 +649,12 @@ if (api) api.onAction(action => {
   support.onAction(action)
   if (action === 'close-window') closeWindow()
   if (action?.type === 'diagnostics-error') toast('Diagnostics storage failed; collection is disabled. Old disk logs may remain. Review Settings → Privacy & diagnostics before restarting.')
-  if (action?.type === 'opened') booting.then(() => { addFiles(action.files); fileSync?.check() })
-  if (action?.type === 'files-changed') booting.then(() => fileSync?.check())
+  if (action?.type === 'opened') booting.then(async () => { await addFiles(action.files); await fileSync?.check() })
+  if (action?.type === 'files-changed') booting.then(() => { fileSync?.check() })
   if (action?.type === 'update-resume') $('#app').inert = false
   if (action?.type === 'checkpoint-update') booting.then(() => { $('#app').inert = true; return api.checkpointUpdate({ token: action.token, snapshot: sessionSnapshot() }) }).catch(() => { $('#app').inert = false; toast('Update stopped: could not checkpoint your tabs.') })
 })
 booting = bootstrap().catch(error => toast(`Could not restore session: ${error.message}`))
-const support = setupSupport({ api, checkpoint: checkpointSession, showMenu, toast, openSettings: settings })
+const support = setupSupport({ api, checkpoint: checkpointSession, showMenu, toast, openSettings: settings, t: (key, values) => translate(prefs.language, key, values) })
 fileSync = setupFileSync({ api, getDocs: () => docs, active, dirty, update, refresh: refreshSyncedDocument, checkpoint: checkpointSession, saveAs: doc => saveDoc(doc, true), modal, toast })
 booting.then(async () => { await fileSync.check(); await support.initialize() }).catch(() => {})

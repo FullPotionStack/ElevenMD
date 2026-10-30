@@ -21,6 +21,16 @@ function service(options) {
   }
   return module.createDocumentService(options);
 }
+test('Markdown save refuses to replace an RTF or PDF destination with plain text', async t => {
+  const dir = await fixture(t);
+  for (const ext of ['rtf', 'pdf']) {
+    const target = path.join(dir, `original.${ext}`);
+    await fs.writeFile(target, `original ${ext}`);
+    const files = service();
+    await assert.rejects(files.save({ id: randomUUID(), content: 'Markdown bytes', saveAs: false, name: 'copy.md' }, async () => target), /format|extension|export/i);
+    assert.equal(await fs.readFile(target, 'utf8'), `original ${ext}`);
+  }
+});
 test('internal document lookup returns copies only for registered file capabilities', async t => {
   const dir = await fixture(t), filename = path.join(dir, 'lookup.md');
   await fs.writeFile(filename, '# Registered');
@@ -370,10 +380,10 @@ test('sandboxed preload exposes only fixed document APIs and strips Electron eve
   let api;
   const electron = { ipcRenderer: ipc, contextBridge: { exposeInMainWorld(name, value) { assert.equal(name, 'notepad'); api = value; } } };
   vm.runInNewContext(source, { require(name) { assert.equal(name, 'electron'); return electron; } });
-  assert.deepEqual(Object.keys(api).sort(), ['adoptFile', 'inspectFiles', 'resolveFile', 'locateFile', 'closeWindow', 'confirmClose', 'initialFiles', 'importImage', 'onAction', 'resolveImage', 'open', 'openLink', 'preferences', 'restoreSession', 'save', 'saveSession', 'sessionReady', 'setDirty', 'updatesState', 'checkUpdates', 'downloadUpdate', 'installUpdate', 'checkpointUpdate', 'openRelease', 'diagnosticsState', 'diagnosticsConsent', 'diagnosticsInspect', 'diagnosticsClear', 'diagnosticsExport', 'recordDiagnostic'].sort());
+  assert.deepEqual(Object.keys(api).sort(), ['adoptFile', 'inspectFiles', 'resolveFile', 'locateFile', 'closeWindow', 'confirmClose', 'initialFiles', 'importImage', 'onAction', 'resolveImage', 'open', 'openLink', 'preferences', 'restoreSession', 'save', 'saveSession', 'sessionReady', 'setDirty', 'updatesState', 'checkUpdates', 'downloadUpdate', 'installUpdate', 'checkpointUpdate', 'openRelease', 'diagnosticsState', 'diagnosticsConsent', 'diagnosticsInspect', 'diagnosticsClear', 'diagnosticsExport', 'recordDiagnostic', 'exportRtf', 'exportPdf'].sort());
   for (const [method, channel, args] of [
     ['adoptFile', 'adopt-file', [{}]], ['inspectFiles', 'inspect-files', [[]]], ['resolveFile', 'resolve-file', [{}]], ['locateFile', 'locate-file', ['id']],
-    ['open', 'open', []], ['initialFiles', 'initial-files', []],
+    ['open', 'open', []], ['initialFiles', 'initial-files', []], ['exportRtf', 'export-rtf', [{ name: 'file.rtf', data: '{\\rtf1 test}' }]], ['exportPdf', 'export-pdf', [{ name: 'file.pdf', html: '<p>test</p>' }]],
     ['updatesState', 'updates-state', []], ['checkUpdates', 'updates-check', []], ['downloadUpdate', 'updates-download', []], ['installUpdate', 'updates-install', []], ['openRelease', 'open-release', []],
     ['diagnosticsState', 'diagnostics-state', []], ['diagnosticsConsent', 'diagnostics-consent', [false]], ['diagnosticsInspect', 'diagnostics-inspect', []], ['diagnosticsClear', 'diagnostics-clear', []], ['diagnosticsExport', 'diagnostics-export', []],
     ['recordDiagnostic', 'record-diagnostic', [{ type: 'mode_changed', mode: 'source' }]], ['checkpointUpdate', 'checkpoint-update', [{ token: 'test', snapshot: {} }]],

@@ -11,7 +11,9 @@ export function setupFileSync({ api, getDocs, active, dirty, update, refresh, ch
   }
   function restorePrevious(doc) {
     const previous = doc.previousContent; if (typeof previous !== 'string') return
-    doc.previousContent = doc.content; doc.content = previous; doc.syncNotice = ''; refresh(doc); update(); checkpoint().catch(error => toast(error.message))
+    doc.previousContent = doc.content; doc.content = previous; doc.syncNotice = ''
+    if (doc.kind === 'pdf') { doc.savedContent = previous; doc.pdfPreviousSelected = !doc.pdfPreviousSelected }
+    refresh(doc); update(); checkpoint().catch(error => toast(error.message))
   }
   function render() {
     banner.replaceChildren(); const doc = active(); if (!doc) { banner.hidden = true; return }

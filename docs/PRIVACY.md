@@ -2,7 +2,7 @@
 
 ## What we record
 
-Diagnostics start off and remain off until you enable them. The app records semantic actions such as mode changes, formatting commands, file-operation outcomes, and update outcomes. It uses an allowlist of event categories, enum values, and bounded counts. Unknown fields and arbitrary strings are discarded before storage.
+Unless you previously disabled diagnostics, the app automatically records sanitized warnings, errors and critical failures locally. You can opt in to additional semantic action history, such as mode changes, formatting commands, file-operation outcomes, and update outcomes. It uses an allowlist of event categories, enum values, and bounded counts. Unknown fields and arbitrary strings are discarded before storage.
 
 The local history holds at most 200 actions from the last 7 days, with a bounded file size. Older events expire. This is enough to explain a sequence such as "open → Source → Preview → Save failure" without recording the note itself.
 
@@ -10,7 +10,7 @@ We do not record document contents, keystrokes, searches or replacements, clipbo
 
 ## Controls
 
-In Settings → Privacy & diagnostics you can enable or disable logs, inspect the exact sanitized JSON, clear the history, or export a file using a native save dialog. Disabling deletes the stored history. The saved consent decision survives restart; no decision counts as off. If Windows denies both writing and deleting the diagnostics file, the app disables collection in the current process and shows a warning: old disk history and its previous consent decision may remain. Fix the directory permissions before restarting; failed deletion is not successful revocation.
+In Settings → Privacy & diagnostics you can enable detailed logs or disable logs, inspect the exact sanitized JSON, clear the history, or export a file using a native save dialog. Disabling deletes the stored history. Your saved decision survives restart; an existing explicit opt-out remains off. If the system denies both writing and deleting the diagnostics file, the app disables collection in the current process and shows a warning: old disk history and its previous consent decision may remain. Fix the directory permissions before restarting; failed deletion is not successful revocation.
 
 Exports are copies you control. Clearing the app's local history does not delete a file you exported elsewhere. Neither an export nor enabling logs uploads anything.
 

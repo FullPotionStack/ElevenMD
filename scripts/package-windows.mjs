@@ -1,4 +1,5 @@
-import { cp, mkdir, readFile, readdir, rename, writeFile, rm } from 'node:fs/promises'
+import { cp, mkdir, readFile, rename, writeFile, rm } from 'node:fs/promises'
+import { collectNotices } from './notices.mjs'
 import path from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { spawnSync, execFileSync } from 'node:child_process'
@@ -10,7 +11,7 @@ import { createBrandAssets } from './generate-brand-assets.mjs'
 import { createDocumentAssets } from './generate-document-icons.mjs'
 import { markRuntime, emitUpdateBundle } from './update-bundles.mjs'
 
-const documentKinds = ['markdown', 'text']
+const documentKinds = ['markdown', 'text', 'rtf', 'pdf']
 export async function validateDocumentIcons(sourceRoot) {
   for (const kind of documentKinds) {
     const assets = createDocumentAssets(kind)
@@ -66,14 +67,7 @@ async function main() {
   await writeFile(path.join(app, 'package.json'), JSON.stringify({ name: pkg.name, productName: 'ElevenMD', version: pkg.version, main: 'electron/main.cjs', private: true }, null, 2))
   const lock = JSON.parse(await readFile(path.join(root, 'package-lock.json'), 'utf8'))
   let notices = 'ElevenMD — third-party notices\n\nElectron and Chromium notices are also included beside the executable.\n\n'
-  for (const [relative, info] of Object.entries(lock.packages)) {
-    if (!relative || info.dev) continue
-    const dir = path.join(root, relative)
-    const files = (await readdir(dir)).filter(n => /^(license|copying|notice)([.-]|$)/i.test(n))
-    if (!files.length) throw new Error(`Missing license text for ${relative}`)
-    notices += `\n${'='.repeat(72)}\n${relative.replace(/^node_modules\//, '')} ${info.version} (${info.license})\n`
-    for (const file of files) notices += `\n${file}\n${await readFile(path.join(dir, file), 'utf8')}\n`
-  }
+  notices += await collectNotices(root, lock)
   notices += `\n${'='.repeat(72)}\nElectron\n${await readFile(path.join(root, 'node_modules', 'electron', 'LICENSE'), 'utf8')}\n`
   await writeFile(path.join(out, 'THIRD-PARTY-NOTICES.txt'), notices)
   await writeFile(path.join(out, 'START-HERE.txt'), [

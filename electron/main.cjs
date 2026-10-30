@@ -2,12 +2,17 @@
 const path = require('node:path');
 const { createSecurityPolicy, isTrustedSender } = require('./security.cjs');
 const { createDocumentService } = require('./files.cjs');
+
+const { createExportService } = require('./export-file.cjs');
 const { createSessionService } = require('./session.cjs');
 const { createImageService } = require('./images.cjs');
 const { setupSupport } = require('./support.cjs');
 async function startDesktop(electron, options = {}) {
   const { app, BrowserWindow, Menu, session, nativeTheme } = electron;
   const env = options.env || process.env;
+  const locale = require('./locale.cjs').createNativeLocale();
+  const t = (key, values) => locale.t(key, values);
+  require('./wayland-gpu.cjs').configureWaylandGpu({ platform: process.platform, env, commandLine: app.commandLine });
   if (env.NOTEPAD_USER_DATA_DIR) app.setPath('userData', path.resolve(env.NOTEPAD_USER_DATA_DIR));
   if (env.ELEVENMD_UPDATE_ACK_PORT && env.ELEVENMD_UPDATE_ACK_TOKEN) await require('./updater/protocol.cjs').notify({ port: Number(env.ELEVENMD_UPDATE_ACK_PORT), token: env.ELEVENMD_UPDATE_ACK_TOKEN, kind: 'started', pid: process.pid });
   const policy = createSecurityPolicy(path.join(__dirname, '..', 'dist'), app.isPackaged ? undefined : env.NOTEPAD_DEV_URL);
@@ -58,16 +63,25 @@ async function startDesktop(electron, options = {}) {
     window.webContents.on(name, event => event.preventDefault());
   }
   const files = createDocumentService();
+
   const images = createImageService({ getDocument: id => files.getDocument(id) });
   const userData = app.getPath('userData');
   const sessions = createSessionService({ file: path.join(userData, 'session.json'), files });
   const restoredSession = await sessions.load();
   let dirty = false;
-  const filters = [{ name: 'Markdown and text', extensions: ['md', 'markdown', 'txt'] }];
+  const filters = [{ name: 'Supported documents', extensions: ['md', 'markdown', 'txt'] }];
+  const textFilters = [{ name: 'Markdown and text', extensions: ['md', 'markdown', 'txt'] }];
+  const openDocument = filename => files.openPath(filename);
   const { ipcMain, dialog } = electron;
+  let support;
   const handle = (name, callback) => ipcMain.handle(`notepad:${name}`, async (event, ...args) => {
     if (!isTrustedSender(event, window, policy)) throw new Error('Unauthorized IPC sender.');
-    return callback(...args);
+    try { return await callback(...args); }
+    catch (error) {
+      const category = ({ 'export-rtf': 'file_write', 'export-pdf': 'file_write', 'save-session': 'session_write', 'checkpoint-update': 'session_write', 'inspect-files': 'file_read', 'locate-file': 'file_read', 'resolve-file': 'file_write', 'resolve-image': 'image_read', 'import-image': 'image_import' })[name];
+      if (category) await support?.record({ type: 'error', category });
+      throw error;
+    }
   });
   let pendingCheckpoint;
   handle('checkpoint-update', async payload => {
@@ -83,7 +97,9 @@ async function startDesktop(electron, options = {}) {
     pendingCheckpoint = { token, timer, resolve };
     window.webContents.send('notepad:action', { type: 'checkpoint-update', token });
   });
-  const support = await setupSupport({ electron, window, handle, userData, checkpoint, version: app.getVersion?.() || require('../package.json').version });
+  support = await setupSupport({ electron, window, handle, userData, checkpoint, t, version: app.getVersion?.() || require('../package.json').version });
+  const stopCriticalEvents = require('./critical-events.cjs').observeCriticalEvents({ app, window, record: support.record });
+  window.once('closed', stopCriticalEvents);
   const track = async (type, operation) => {
     try {
       const value = await operation();
@@ -98,9 +114,9 @@ async function startDesktop(electron, options = {}) {
     for (const arg of args) {
       if (typeof arg !== 'string' || arg.startsWith('-') || !/\.(md|markdown|txt)$/i.test(arg)) continue;
       try {
-        const doc = await track('document_open', () => files.openPath(path.resolve(cwd, arg)));
+        const doc = await track('document_open', () => openDocument(path.resolve(cwd, arg)));
         if (!opened.some(item => item.id === doc.id)) opened.push(doc);
-      } catch (error) { dialog.showErrorBox('Cannot open document', `${path.basename(arg)}\n\n${error.message}`); }
+      } catch (error) { dialog.showErrorBox(t('Cannot open document'), `${path.basename(arg)}\n\n${error.message}`); }
     }
     return opened;
   }
@@ -128,53 +144,87 @@ async function startDesktop(electron, options = {}) {
   };
   for (const launch of pendingLaunches.splice(0)) await deliverLaunch(...launch);
   handle('open', () => track('document_open', async () => {
-    const result = await dialog.showOpenDialog(window, { title: 'Open', properties: ['openFile', 'multiSelections'], filters });
+    const result = await dialog.showOpenDialog(window, { title: t('Open'), properties: ['openFile', 'multiSelections'], filters: [{ ...filters[0], name: t(filters[0].name) }] });
     if (result.canceled) return [];
     const opened = [];
-    for (const filename of result.filePaths) opened.push(await files.openPath(filename));
+    for (const filename of result.filePaths) opened.push(await openDocument(filename));
     return opened;
   }));
-  handle('save', payload => track(payload?.saveAs ? 'document_save_as' : 'document_save', () => files.save(payload, async info => {
-    const result = await dialog.showSaveDialog(window, { title: 'Save As', defaultPath: info.path || info.name,
-      filters, properties: ['showOverwriteConfirmation', 'createDirectory'] });
+  handle('save', payload => track(payload?.saveAs ? 'document_save_as' : 'document_save', async () => {
+    const saved = await files.save(payload, async info => {
+    const result = await dialog.showSaveDialog(window, { title: t('Save As'), defaultPath: info.path || info.name,
+      filters: [{ ...textFilters[0], name: t(textFilters[0].name) }], properties: ['showOverwriteConfirmation', 'createDirectory'] });
     return result.canceled ? null : result.filePath;
-  })));
+    });
+    return saved;
+  }));
+  const exports = createExportService();
+  handle('export-rtf', request => {
+    if (!request || Object.keys(request).some(key => !['name', 'data'].includes(key))) throw new Error('Invalid export request.');
+    return exports.exportFile({ format: 'rtf', name: request.name, data: request.data }, async name => {
+      const result = await dialog.showSaveDialog(window, { title: t('Export RTF'), defaultPath: name,
+        filters: [{ name: t('Rich Text Format'), extensions: ['rtf'] }], properties: ['showOverwriteConfirmation', 'createDirectory'] });
+      return result.canceled ? null : result.filePath;
+    });
+  });
+  handle('export-pdf', async request => {
+    if (!request || Object.keys(request).some(key => !['name', 'html'].includes(key)) || typeof request.name !== 'string' || typeof request.html !== 'string' || Buffer.byteLength(request.html, 'utf8') > 10 * 1024 * 1024) throw new Error('Invalid PDF export request.');
+    const partition = `elevenmd-print-${require('node:crypto').randomUUID()}`;
+    const printSession = session.fromPartition(partition);
+    printSession.setPermissionRequestHandler((_contents, _permission, callback) => callback(false));
+    printSession.webRequest.onBeforeRequest({ urls: ['<all_urls>'] }, (details, callback) => callback({ cancel: !details.url.startsWith('data:') }));
+    const printWindow = new BrowserWindow({ show: false, webPreferences: { partition, contextIsolation: true, sandbox: true, nodeIntegration: false, javascript: false, webSecurity: true } });
+    printWindow.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
+    const html = `<!doctype html><html><head><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; img-src data:; base-uri 'none'; form-action 'none'"><style>body{font:12pt sans-serif;line-height:1.5;overflow-wrap:anywhere}img{max-width:100%}pre{white-space:pre-wrap}table{border-collapse:collapse}td,th{border:1px solid #999;padding:4px}</style></head><body>${request.html}</body></html>`;
+    try {
+      await printWindow.loadURL(`data:text/html;base64,${Buffer.from(html).toString('base64')}`);
+      const data = await printWindow.webContents.printToPDF({ printBackground: true });
+      return await exports.exportFile({ format: 'pdf', name: request.name, data }, async name => {
+        const result = await dialog.showSaveDialog(window, { title: t('Export PDF'), defaultPath: name,
+          filters: [{ name: t('PDF document'), extensions: ['pdf'] }], properties: ['showOverwriteConfirmation', 'createDirectory'] });
+        return result.canceled ? null : result.filePath;
+      });
+    } finally { if (!printWindow.isDestroyed()) printWindow.destroy(); }
+  });
   const monitor = require('./file-monitor.cjs').createFileMonitor({ notify: () => {
     if (!window.isDestroyed()) window.webContents.send('notepad:action', { type: 'files-changed' });
   } });
   window.on('closed', () => monitor.close());
   window.on('focus', () => { if (!window.isDestroyed()) window.webContents.send('notepad:action', { type: 'files-changed' }); });
+  let textDocuments = [];
+  const updateMonitor = () => monitor.setDocuments(textDocuments);
   handle('inspect-files', async ids => {
     const result = await files.inspect(ids);
-    monitor.setDocuments(ids.map(id => files.getDocument(id)));
+    textDocuments = ids.map(id => files.getDocument(id)); updateMonitor();
     return result;
   });
+
   handle('adopt-file', payload => files.adoptExternal(payload));
   handle('resolve-file', payload => files.resolveExternal(payload, async (action, name) => {
-    const result = await dialog.showMessageBox(window, { type: 'warning', title: 'Resolve file changes', message: action === 'recreate' ? `Recreate ${name} on disk?` : `Replace the disk version of ${name}?`, detail: 'Your reviewed editor or merged version will be written. Cancel leaves the disk file unchanged.', buttons: ['Write file', 'Cancel'], defaultId: 1, cancelId: 1, noLink: true });
+    const result = await dialog.showMessageBox(window, { type: 'warning', title: t('Resolve file changes'), message: t(action === 'recreate' ? 'Recreate {name} on disk?' : 'Replace the disk version of {name}?', { name }), detail: t('Your reviewed editor or merged version will be written. Cancel leaves the disk file unchanged.'), buttons: [t('Write file'), t('Cancel')], defaultId: 1, cancelId: 1, noLink: true });
     return result.response === 0;
   }));
   handle('locate-file', id => files.locate(id, async name => {
-    const result = await dialog.showOpenDialog(window, { title: `Locate ${name}`, properties: ['openFile'], filters });
+    const result = await dialog.showOpenDialog(window, { title: t('Locate {name}', { name }), properties: ['openFile'], filters: [{ ...filters[0], name: t(filters[0].name) }] });
     return result.canceled ? null : result.filePaths[0];
   }));
   handle('open-link', async value => {
     if (typeof value !== 'string' || value.length > 4096 || /[\u0000-\u0020]/.test(value)) throw new Error('Invalid link.');
     let url; try { url = new URL(value); } catch { throw new Error('Invalid link.'); }
     if (!['http:', 'https:', 'mailto:'].includes(url.protocol) || url.username || url.password) throw new Error('Unsupported link.');
-    const result = await dialog.showMessageBox(window, { type: 'question', title: 'Open link', message: 'Open this link outside ElevenMD?', detail: url.href, buttons: ['Open', 'Cancel'], defaultId: 1, cancelId: 1, noLink: true });
+    const result = await dialog.showMessageBox(window, { type: 'question', title: t('Open link'), message: t('Open this link outside ElevenMD?'), detail: url.href, buttons: [t('Open'), t('Cancel')], defaultId: 1, cancelId: 1, noLink: true });
     if (result.response === 0) await electron.shell.openExternal(url.href);
   });
   handle('resolve-image', payload => images.resolve(payload));
   handle('import-image', payload => images.importImage(payload, async () => {
-    const result = await dialog.showOpenDialog(window, { title: 'Insert image', properties: ['openFile'], filters: [{ name: 'Raster images', extensions: ['png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp', 'avif'] }] });
+    const result = await dialog.showOpenDialog(window, { title: t('Insert image'), properties: ['openFile'], filters: [{ name: t('Raster images'), extensions: ['png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp', 'avif'] }] });
     return result.canceled ? null : result.filePaths[0];
   }));
   handle('confirm-close', async name => {
     if (typeof name !== 'string' || name.length > 255 || /[\u0000-\u001f]/.test(name)) throw new Error('Invalid document name.');
     const result = await dialog.showMessageBox(window, { type: 'question', title: 'ElevenMD',
-      message: `Do you want to save changes to ${name || 'Untitled'}?`,
-      buttons: ['Save', "Don't Save", 'Cancel'], defaultId: 0, cancelId: 2, noLink: true });
+      message: t('Do you want to save changes to {name}?', { name: name || t('Untitled') }),
+      buttons: [t('Save'), t("Don't Save"), t('Cancel')], defaultId: 0, cancelId: 2, noLink: true });
     return ['save', 'discard', 'cancel'][result.response] || 'cancel';
   });
   handle('set-dirty', value => {
@@ -207,8 +257,9 @@ async function startDesktop(electron, options = {}) {
   nativeTheme?.on('updated', updateChrome);
   updateChrome();
   handle('preferences', value => {
-    if (!value || Object.keys(value).some(k => !['theme', 'effectiveTheme', 'spellcheck', 'remoteImages'].includes(k)) || !['system', 'light', 'dark'].includes(value.theme) || typeof value.spellcheck !== 'boolean' || typeof value.remoteImages !== 'boolean') throw new Error('Invalid preferences.');
+    if (!value || Object.keys(value).some(k => !['theme', 'effectiveTheme', 'spellcheck', 'remoteImages', 'language'].includes(k)) || !['system', 'light', 'dark'].includes(value.theme) || typeof value.spellcheck !== 'boolean' || typeof value.remoteImages !== 'boolean' || (value.language !== undefined && !['en', 'pt-BR'].includes(value.language))) throw new Error('Invalid preferences.');
     if (value.effectiveTheme !== undefined && !['light', 'dark'].includes(value.effectiveTheme)) throw new Error('Invalid effective theme.');
+    locale.set(value.language);
     renderedTheme = value.effectiveTheme;
     if (nativeTheme) nativeTheme.themeSource = value.theme;
     isolatedSession.setSpellCheckerEnabled?.(value.spellcheck);

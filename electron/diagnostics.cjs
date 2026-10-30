@@ -7,6 +7,8 @@ const { randomUUID } = require('node:crypto');
 // Only semantic enums cross the storage boundary. Never stringify caller objects.
 const OUTCOMES = Object.freeze(['success', 'cancelled', 'failure', 'blocked', 'noop']);
 const ERROR_CATEGORIES = Object.freeze(['file_read', 'file_write', 'external_change', 'file_too_large', 'unsupported_format', 'permission', 'session_read', 'session_write', 'image_read', 'image_import', 'network', 'update_check', 'update_download', 'update_install', 'diagnostics_storage', 'renderer', 'unknown']);
+const WARNING_CATEGORIES = Object.freeze(['external_change', 'file_too_large', 'unsupported_format', 'permission', 'session_read', 'session_write', 'network', 'update_check', 'update_download', 'update_install', 'diagnostics_storage', 'renderer', 'unknown']);
+const AUTO_TYPES = Object.freeze(['error', 'warning', 'process_failure']);
 const EVENT_SCHEMA = Object.freeze({
   mode_changed: { mode: ['formatted', 'source', 'preview'] },
   document_new: { outcome: OUTCOMES },
@@ -20,6 +22,8 @@ const EVENT_SCHEMA = Object.freeze({
   update: { action: ['check', 'download', 'install', 'open_release'], outcome: OUTCOMES },
   lifecycle: { action: ['startup', 'session_restore', 'quit'], },
   error: { category: ERROR_CATEGORIES },
+  warning: { category: WARNING_CATEGORIES },
+  process_failure: { process: ['main', 'renderer', 'gpu'], reason: ['crashed', 'unresponsive', 'uncaught_exception', 'unhandled_rejection', 'launch_failed', 'out_of_memory', 'killed', 'unknown'] },
 });
 for (const fields of Object.values(EVENT_SCHEMA)) {
   for (const values of Object.values(fields)) Object.freeze(values);
@@ -40,7 +44,7 @@ function sanitizeEvent(input, at) {
       if (!values.includes(value)) return null;
       result[key] = value;
     }
-    if (type !== 'error') {
+    if (!Object.hasOwn(EVENT_SCHEMA[type], 'category')) {
       const category = own(input, 'category');
       if (ERROR_CATEGORIES.includes(category)) result.category = category;
     }
@@ -63,9 +67,10 @@ function safeVersion(value) {
 }
 
 /**
- * Main-process-only, local, opt-in diagnostics. Pass a file below app.getPath('userData').
+ * Main-process-only, local diagnostics. Pass a file below app.getPath('userData').
  * const diagnostics = createDiagnosticsService({ file, version: app.getVersion() });
  * await diagnostics.load(); // idempotent; getConsent() is null (unset), false, or true
+ * Unset consent records only error, warning and process_failure; true enables all events.
  * await diagnostics.setConsent(true); // only after an explicit user decision
  * await diagnostics.record({ type: 'document_save', outcome: 'success' });
  * await diagnostics.inspect(); // detached safe object; no personal environment fields
@@ -94,7 +99,7 @@ function createDiagnosticsService({ file, version, now = Date.now, io = fs, plat
   });
   let consent = null, events = [], queue = null, dirty = false, pendingRecords = 0, storageError = null;
   let loaded = false, loadPromise = null;
-  const getState = () => ({ loaded, consent, enabled: loaded && consent === true, eventCount: events.length, pendingRecords, storageError, limits: { ...LIMITS } });
+  const getState = () => ({ loaded, consent, enabled: loaded && consent !== false, eventCount: events.length, pendingRecords, storageError, limits: { ...LIMITS } });
   async function failStorage() {
     // Fail closed; never echo filesystem exceptions or their personal paths.
     consent = false; events = []; dirty = false; storageError = 'diagnostics_storage';
@@ -175,13 +180,13 @@ function createDiagnosticsService({ file, version, now = Date.now, io = fs, plat
         const state = JSON.parse(raw);
         if (!state || state.schema !== 1 || ![true, false, null].includes(state.consent) || !Array.isArray(state.events)) throw new Error();
         consent = state.consent;
-        if (consent === true) {
-          events = state.events.map(event => sanitizeEvent(event, event && own(event, 'at'))).filter(Boolean);
+        if (consent !== false) {
+          events = state.events.map(event => sanitizeEvent(event, event && own(event, 'at'))).filter(event => event && (consent === true || AUTO_TYPES.includes(event.type)));
           events.sort((a, b) => a.at - b.at);
           prune();
         }
         repair = raw !== JSON.stringify({ schema: 1, consent, events });
-      } catch { consent = null; events = []; repair = true; }
+      } catch { consent = false; events = []; repair = true; }
       if (repair) await enqueue();
       return getState();
   }
@@ -207,9 +212,15 @@ function createDiagnosticsService({ file, version, now = Date.now, io = fs, plat
       return enqueue();
     },
     async record(event) {
-      if (!loaded || consent !== true || pendingRecords >= MAX_EVENTS) return false;
-      const sanitized = sanitizeEvent(event, now());
-      if (!sanitized) return false;
+      if (!loaded || consent === false || pendingRecords >= MAX_EVENTS) return false;
+      let sanitized = sanitizeEvent(event, now());
+      if (consent === null && sanitized?.outcome === 'failure') {
+        const category = sanitized.type === 'document_open' ? 'file_read'
+          : ['document_save', 'document_save_as'].includes(sanitized.type) ? 'file_write'
+          : sanitized.type === 'update' && ['check', 'download', 'install'].includes(sanitized.action) ? `update_${sanitized.action}` : null;
+        if (category) sanitized = { type: 'error', category, at: sanitized.at };
+      }
+      if (!sanitized || (consent === null && !AUTO_TYPES.includes(sanitized.type))) return false;
       pendingRecords++;
       events.push(sanitized);
       prune();
@@ -224,4 +235,4 @@ function createDiagnosticsService({ file, version, now = Date.now, io = fs, plat
   };
 }
 
-module.exports = { createDiagnosticsService, EVENT_SCHEMA, OUTCOMES, ERROR_CATEGORIES, LIMITS };
+module.exports = { createDiagnosticsService, EVENT_SCHEMA, OUTCOMES, ERROR_CATEGORIES, WARNING_CATEGORIES, AUTO_TYPES, LIMITS };

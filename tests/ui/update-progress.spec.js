@@ -1,5 +1,28 @@
 import { test, expect } from '@playwright/test'
 
+test('Portuguese update progress translates the dynamic percentage', async ({ page }) => {
+  await page.addInitScript(() => {
+    const listeners = []
+    window.emitUpdate = state => listeners.forEach(callback => callback({ type: 'update-progress', state }))
+    window.notepad = {
+      initialFiles: async () => [], setDirty: () => {}, preferences: async () => {},
+      onAction: callback => { listeners.push(callback) },
+      checkUpdates: async () => ({ status: 'available', version: '0.4.0', notes: 'Save' }),
+      downloadUpdate: () => new Promise(resolve => { window.finishDownload = resolve }),
+    }
+  })
+  await page.goto('/')
+  await expect(page.locator('#update-status')).toBeVisible()
+  await page.getByRole('button', { name: 'Settings', exact: true }).click()
+  await page.getByLabel('Language').selectOption('pt-BR')
+  await page.getByRole('button', { name: 'Concluído' }).click()
+  await page.locator('#update-status').click()
+  await page.getByRole('button', { name: 'Baixar atualização', exact: true }).click()
+  await page.evaluate(() => emitUpdate({ status: 'downloading', version: '0.4.0', progress: { received: 250, total: 1000 } }))
+  await expect(page.locator('#update-progress-text')).toHaveText('Baixando atualização… 25%')
+  await expect(page.locator('#update-status')).toHaveText('Baixando atualização… 25%')
+})
+
 for (const theme of ['light', 'dark']) {
   test(`update progress is live, accessible and survives closing Settings in ${theme}`, async ({ page }) => {
     await page.addInitScript(() => {

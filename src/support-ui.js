@@ -1,11 +1,11 @@
 import { renderReleaseNotes } from './release-notes.js'
 
-export function setupSupport({ api, checkpoint, showMenu, toast, openSettings }) {
+export function setupSupport({ api, checkpoint, showMenu, toast, openSettings, t = value => value }) {
   const $ = s => document.querySelector(s)
   let update = { status: 'idle' }, diagnostics = { consent: null, count: 0 }
   let busy = false, updateHeading
   const owns = heading => $('#modal').open && heading?.isConnected && !heading.closest('[hidden]')
-  const privacyText = () => diagnostics.storageError ? 'Collection is disabled in this process. The system could not update or delete diagnostics storage; old disk logs may remain and a previous consent choice could return after restart. Check file permissions before restarting.' : `${diagnostics.consent === true ? 'Enabled' : 'Off'} · ${diagnostics.count || 0} recorded actions`
+  const privacyText = () => diagnostics.storageError ? 'Collection is disabled in this process. The system could not update or delete diagnostics storage; old disk logs may remain and a previous consent choice could return after restart. Check file permissions before restarting.' : t('{state} · {count} recorded events', { state: t(diagnostics.consent === true ? 'Detailed logs enabled' : diagnostics.consent === false ? 'Off' : 'Automatic critical logs enabled'), count: diagnostics.count || 0 })
   async function privacyFailure(action, heading) {
     try { diagnostics = await api.diagnosticsState() } catch { diagnostics = { consent: false, count: 0, storageError: 'diagnostics_storage' } }
     status()
@@ -24,7 +24,7 @@ export function setupSupport({ api, checkpoint, showMenu, toast, openSettings })
     const percent = downloadPercent()
     if (update.status === 'downloading' && percent !== null) {
       bar.max = update.progress.total; bar.value = update.progress.received
-      text.textContent = `Downloading update… ${percent}%`
+      text.textContent = t('Downloading update… {percent}%', { percent })
     } else {
       bar.removeAttribute('value')
       text.textContent = update.status === 'verifying' ? 'Verifying update…' : update.status === 'installing' ? 'Preparing update and restart…' : 'Preparing download…'
@@ -35,7 +35,7 @@ export function setupSupport({ api, checkpoint, showMenu, toast, openSettings })
   function status() {
     const button = $('#update-status'), percent = downloadPercent()
     button.hidden = !['available', 'downloaded', 'downloading', 'verifying', 'installing', 'checking', 'error'].includes(update.status)
-    button.textContent = update.status === 'downloaded' ? `Update ready: ${update.version}` : update.status === 'available' ? `Update available: ${update.version}` : update.status === 'checking' ? 'Checking updates…' : update.status === 'verifying' ? 'Verifying update…' : update.status === 'installing' ? 'Preparing update…' : update.status === 'downloading' ? `Downloading update…${percent === null ? '' : ` ${percent}%`}` : 'Update check unavailable'
+    button.textContent = update.status === 'downloaded' ? t('Update ready: {version}', { version: update.version }) : update.status === 'available' ? t('Update available: {version}', { version: update.version }) : update.status === 'checking' ? t('Checking updates…') : update.status === 'verifying' ? t('Verifying update…') : update.status === 'installing' ? t('Preparing update…') : update.status === 'downloading' ? percent === null ? t('Downloading update…') : t('Downloading update… {percent}%', { percent }) : t('Update check unavailable')
     progress()
   }
   function onAction(action) {
@@ -54,7 +54,7 @@ export function setupSupport({ api, checkpoint, showMenu, toast, openSettings })
     if (!target) return openSettings('updates')
     target.innerHTML = `<h3>Updates</h3><p id="update-description"></p><progress id="update-progress" aria-label="Update progress" hidden></progress><p id="update-progress-text" role="status" hidden></p><div id="release-notes" class="release-notes" role="region" aria-label="Release notes" tabindex="0"></div><div class="support-actions"><button id="check-updates">Check updates</button><button id="release-page">Release notes on GitHub</button><button id="download-update" class="primary" hidden>Download update</button><button id="install-update" class="primary" hidden>Install and restart</button></div><p class="small muted">Checking contacts GitHub. Downloads and installation only happen when you choose them. Installing checkpoints your tabs first, shows update progress without a setup wizard, and reopens this copy. Portable copies stay portable. Your document files are not overwritten.</p>`
     updateHeading = target.querySelector('h3')
-    $('#update-description').textContent = update.status === 'available' ? `Version ${update.version} is available.` : update.status === 'downloaded' ? `Version ${update.version} is downloaded and verified.` : update.status === 'current' ? 'You are up to date.' : update.status === 'error' ? update.error || 'Could not check for updates. Try again when you are online.' : update.status === 'unpublished' ? 'There are no published releases yet.' : update.status === 'checking' ? 'Checking GitHub for a newer release…' : update.status === 'downloading' ? 'Downloading the verified update…' : update.status === 'verifying' ? 'Verifying the update…' : update.status === 'installing' ? 'Preparing update and restart…' : 'Check GitHub for a newer release.'
+    $('#update-description').textContent = update.status === 'available' ? t('Version {version} is available.', { version: update.version }) : update.status === 'downloaded' ? t('Version {version} is downloaded and verified.', { version: update.version }) : update.status === 'current' ? 'You are up to date.' : update.status === 'error' ? update.error || 'Could not check for updates. Try again when you are online.' : update.status === 'unpublished' ? 'There are no published releases yet.' : update.status === 'checking' ? 'Checking GitHub for a newer release…' : update.status === 'downloading' ? 'Downloading the verified update…' : update.status === 'verifying' ? 'Verifying the update…' : update.status === 'installing' ? 'Preparing update and restart…' : 'Check GitHub for a newer release.'
     if (update.manualDownload) {
       $('#release-page').textContent = 'Download for your platform on GitHub'
       target.querySelector('.small.muted').textContent = 'Checking contacts GitHub. On Linux and macOS, choose the matching installer or portable archive on the release page, then install it yourself after closing the app. This app does not download or run installers on these platforms.'
@@ -88,11 +88,11 @@ export function setupSupport({ api, checkpoint, showMenu, toast, openSettings })
     const origin = target.querySelector('h4')
     try { diagnostics = await api.diagnosticsState() } catch { diagnostics = { consent: false, count: 0, storageError: 'diagnostics_storage' } }
     if (!owns(origin)) return
-    target.innerHTML = `<h4>Sanitized local diagnostics</h4><p>Optional sanitized logs stay on this computer. They keep the last <strong>200 meaningful actions</strong> for up to <strong>7 days</strong>, such as opening a file, changing mode, formatting, or a save failure.</p><p>We do not log document text, keystrokes, clipboard contents, file names or paths, search text, links, screenshots, credentials, or your identity. This is not a recording of your entire session. Nothing is sent automatically.</p><p id="diagnostics-status" role="status"></p><div class="support-actions"><button id="enable-diagnostics" class="primary">Enable sanitized local logs</button><button id="disable-diagnostics">Disable and delete logs</button><button id="inspect-diagnostics">Inspect logs</button><button id="clear-diagnostics">Clear logs</button><button id="export-diagnostics">Export sanitized logs…</button></div><p class="small muted">Collection is opt-in. Logs stay on this computer and are never uploaded. Exported copies remain yours to delete.</p>`
+    target.innerHTML = `<h4>Sanitized local diagnostics</h4><p>Warnings, errors and critical failures are recorded automatically on this computer. You can opt in to additional sanitized action history. Logs keep up to <strong>200 events</strong> for <strong>7 days</strong>.</p><p>We do not log document text, keystrokes, clipboard contents, file names or paths, search text, links, screenshots, credentials, or your identity. This is not a recording of your entire session. Nothing is sent automatically.</p><p id="diagnostics-status" role="status"></p><div class="support-actions"><button id="enable-diagnostics" class="primary">Enable detailed sanitized logs</button><button id="disable-diagnostics">Disable and delete logs</button><button id="inspect-diagnostics">Inspect logs</button><button id="clear-diagnostics">Clear logs</button><button id="export-diagnostics">Export sanitized logs…</button></div><p class="small muted">Logs stay on this computer and are never uploaded. Exported copies remain yours to delete.</p>`
     const heading = target.querySelector('h4')
     $('#diagnostics-status').textContent = privacyText()
     $('#enable-diagnostics').hidden = diagnostics.consent === true
-    $('#disable-diagnostics').textContent = diagnostics.consent === true ? 'Disable and delete logs' : 'Keep logs off'
+    $('#disable-diagnostics').textContent = diagnostics.consent === false ? 'Keep logs off' : 'Disable and delete logs'
     for (const [id, value] of [['enable-diagnostics', true], ['disable-diagnostics', false]]) $(`#${id}`).onclick = async () => {
       try { diagnostics = await api.diagnosticsConsent(value); status(); if (owns(heading)) await privacy(target) } catch { await privacyFailure(value ? 'enable' : 'disable and delete', heading) }
     }
@@ -110,12 +110,54 @@ export function setupSupport({ api, checkpoint, showMenu, toast, openSettings })
       try { if (await api.diagnosticsExport()) toast('Sanitized diagnostics exported. Review before sharing.') } catch { await privacyFailure('export', heading) }
     }
   }
-  $('#help-menu').onclick = () => showMenu($('#help-menu'), [['Check updates', '', () => check(true)], ['Release notes', '', () => updates()]])
+  function shortcuts() {
+    const modal = $('#modal')
+    const mac = /Mac/i.test(navigator.platform)
+    const mod = mac ? '⌘' : 'Ctrl', alt = mac ? 'Option' : 'Alt', shift = 'Shift'
+    const sections = [
+      ['Formatted editor', [['Bold', [[mod, 'B']]], ['Italic', [[mod, 'I']]], ['Strikethrough', [[mod, shift, 'X']]], ['Inline code', [[mod, 'E']]], ['Headings 1–6', [[mod, alt, '1–6']]], ['Bulleted list', [[mod, shift, '8']]], ['Numbered list', [[mod, shift, '7']]], ['Task list', [[mod, shift, '9']]], ['Code block', [[mod, alt, 'C']]]]],
+      ['File & tabs', [['New tab', [[mod, 'N']]], ['Open', [[mod, 'O']]], ['Save', [[mod, 'S']]], ['Save As', [[mod, shift, 'S']]], ['Close tab', [[mod, 'W']]], ['Next tab', [[mod, 'Tab']]], ['Previous tab', [[mod, shift, 'Tab']]]]],
+      ['Editing', [['Undo', [[mod, 'Z']]], ['Redo', [[mod, 'Y'], [mod, shift, 'Z']]], ['Select all', [[mod, 'A']]], ['Find', [[mod, 'F']]], ['Replace', [[mod, 'H']]]]],
+      ['View & navigation', [['Zoom in', [[mod, '+']]], ['Zoom out', [[mod, '−']]], ['Reset zoom', [[mod, '0']]], ['Dismiss menu or dialog', [['Esc']]]]],
+    ]
+    modal.replaceChildren(); modal.classList.add('shortcuts-dialog')
+    const header = document.createElement('header'); header.className = 'shortcuts-header'
+    const heading = document.createElement('h2'); heading.textContent = 'Keyboard shortcuts'
+    const description = document.createElement('p'); description.textContent = 'Quick actions for writing and navigating.'
+    header.append(heading, description); modal.append(header)
+    const grid = document.createElement('div'); grid.className = 'shortcuts-grid'; grid.setAttribute('aria-label', 'Shortcut categories'); grid.tabIndex = 0
+    for (const [title, entries] of sections) {
+      const card = document.createElement('section'); card.className = 'shortcut-card'
+      const h = document.createElement('h3'); h.textContent = title; card.append(h)
+      const list = document.createElement('dl'); list.className = 'shortcut-list'
+      for (const [label, combos] of entries) {
+        const row = document.createElement('div'); row.className = 'shortcut-row'
+        const term = document.createElement('dt'), detail = document.createElement('dd')
+        term.textContent = label
+        combos.forEach((keys, index) => {
+          if (index) detail.append(document.createTextNode(' / '))
+          keys.forEach((key, keyIndex) => {
+            if (keyIndex) detail.append(document.createTextNode('+'))
+            const kbd = document.createElement('kbd'); kbd.textContent = key; detail.append(kbd)
+          })
+        })
+        row.append(term, detail); list.append(row)
+      }
+      card.append(list); grid.append(card)
+    }
+    modal.append(grid)
+    const actions = document.createElement('div'); actions.className = 'dialog-actions shortcuts-actions'
+    const note = document.createElement('span'); note.textContent = 'Scroll for more · Find and Replace use Source mode.'
+    const close = document.createElement('button'); close.textContent = 'Close'; close.onclick = () => modal.close(); actions.append(note, close); modal.append(actions)
+    modal.addEventListener('close', () => { modal.classList.remove('shortcuts-dialog'); $('#help-menu').focus() }, { once: true })
+    modal.showModal(); close.focus()
+  }
+  $('#help-menu').onclick = () => showMenu($('#help-menu'), [['Keyboard shortcuts', '', shortcuts], ['Check updates', '', () => check(true)], ['Release notes', '', () => updates()]])
   $('#update-status').onclick = () => updates()
   return { async initialize() {
     try { if (api?.diagnosticsState) diagnostics = await api.diagnosticsState() } catch { /* Keep consent unknown/off on error. */ }
     status()
     if (diagnostics.storageError) toast(privacyText())
     if (api?.checkUpdates) await check()
-  }, privacy, updates, onAction }
+  }, privacy, updates, onAction, refresh: status }
 }

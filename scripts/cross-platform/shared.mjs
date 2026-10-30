@@ -2,7 +2,8 @@
 import { spawnSync } from 'node:child_process'
 import { createHash } from 'node:crypto'
 import { createReadStream } from 'node:fs'
-import { access, cp, mkdir, open, readFile, readdir, rename, rm, writeFile } from 'node:fs/promises'
+import { access, cp, mkdir, open, readFile, rename, rm, writeFile } from 'node:fs/promises'
+import { collectNotices } from '../notices.mjs'
 import path from 'node:path'
 import { createRequire } from 'node:module'
 import { validateDistribution } from '../distribution-policy.mjs'
@@ -56,14 +57,7 @@ export async function stageNative({ root, runtime, platform, arch, origin }) {
   for (const file of ['dist/index.html', 'electron/main.cjs', 'LICENSE']) await access(path.join(root, file))
   const lock = JSON.parse(await readFile(path.join(root, 'package-lock.json'), 'utf8'))
   let notices = 'ElevenMD — third-party notices\n\nElectron and Chromium notices are included with this distribution.\n'
-  for (const [relative, info] of Object.entries(lock.packages)) {
-    if (!relative || info.dev) continue
-    const dir = path.join(root, relative)
-    const names = (await readdir(dir)).filter(name => /^(license|copying|notice)([.-]|$)/i.test(name)).sort()
-    if (!names.length) throw new Error(`Missing license text for ${relative}`)
-    notices += `\n${'='.repeat(72)}\n${relative} ${info.version} (${info.license})\n`
-    for (const name of names) notices += `\n${name}\n${await readFile(path.join(dir, name), 'utf8')}\n`
-  }
+  notices += await collectNotices(root, lock)
   const out = path.join(root, 'release', `${isMac ? 'mac' : 'linux'}-${pkg.version}-${arch}-unpacked`)
   await mkdir(path.dirname(out), { recursive: true })
   try { await mkdir(out) } catch (error) {

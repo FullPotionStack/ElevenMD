@@ -21,6 +21,9 @@ function createDocumentService(options = {}) {
   const io = options.fs || fs;
   const documents = new Map();
   const byPath = new Map();
+  function rejectExportFormats(filename) {
+    if (/\.(?:rtf|pdf)$/i.test(filename)) throw new Error('RTF and PDF opening is not supported. Use export instead.');
+  }
   async function snapshot(filename) {
     let stat;
     try { stat = await io.lstat(filename); } catch (error) {
@@ -52,7 +55,9 @@ function createDocumentService(options = {}) {
     return { hash: hash(bytes), mode: stat.mode, bom, eol: text.includes('\r\n') ? 'CRLF' : 'LF', content: normalize(text) };
   }
   async function openPath(filename) {
+    rejectExportFormats(filename);
     const canonical = await io.realpath(filename);
+    rejectExportFormats(canonical);
     const existing = await snapshot(canonical);
     if (!existing) throw new Error('File no longer exists.');
     const prior = documents.get(byPath.get(canonical));
@@ -76,6 +81,7 @@ function createDocumentService(options = {}) {
         target = path.join(await io.realpath(path.dirname(target)), path.basename(target));
       }
     }
+    if (/\.(rtf|pdf)$/i.test(target)) throw new Error('Use export for RTF or PDF formats; Markdown cannot overwrite them.');
     const owner = byPath.get(target);
     if (owner && owner !== payload.id) throw new Error('This target is already open in another tab. Save that tab or choose a different file.');
     const existing = await snapshot(target);
@@ -173,7 +179,10 @@ function createDocumentService(options = {}) {
     const record = registered(id);
     if (typeof choosePath !== 'function') throw new Error('A native file picker is required.');
     const selected = await choosePath(record.doc.name); if (!selected) return null;
-    const target = await io.realpath(selected), disk = await snapshot(target);
+    rejectExportFormats(selected);
+    const target = await io.realpath(selected);
+    rejectExportFormats(target);
+    const disk = await snapshot(target);
     if (!disk) throw new Error('File no longer exists.');
     const owner = byPath.get(target);
     if (owner && owner !== id) throw new Error('This file is already open in another tab.');
